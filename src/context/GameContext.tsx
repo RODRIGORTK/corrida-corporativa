@@ -82,7 +82,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     boardSize: 30,
     lapLimit: 3
   });
-  const [tiles, setTiles] = useState<Tile[]>(() => generateBoardTiles(30));
+  const [tiles, setTiles] = useState<Tile[]>(() => shuffleBoardRules(generateBoardTiles(30)));
   const [players, setPlayers] = useState<Player[]>([]);
   const [activePlayerIndex, setActivePlayerIndex] = useState<number>(0);
   const [currentRound, setCurrentRound] = useState<number>(1);
@@ -133,7 +133,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Inicialização da Partida
   const setupGame = useCallback((playerNames: string[], boardSize: BoardSize, lapLimit: number | null) => {
-    const newTiles = generateBoardTiles(boardSize);
+    const baseTiles = generateBoardTiles(boardSize);
+    const newTiles = shuffleBoardRules(baseTiles);
     const newPlayers: Player[] = playerNames.map((name, idx) => ({
       id: `p-${idx + 1}-${Math.random().toString(36).substring(2, 6)}`,
       name: name.trim(),
@@ -260,10 +261,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Se deu uma volta completa na lista de jogadores, avança a rodada
       if (nextIdx === 0) {
-        // Embaralha dinamicamente as regras das casas a cada nova rodada
-        setTiles(currTiles => shuffleBoardRules(currTiles));
-        addLog(`🎲 Nova rodada corporativa! O mercado se reestruturou e as regras das casas mudaram de posição.`, 'info');
-
         setCurrentRound(prevRound => {
           const nextRound = prevRound + 1;
 
