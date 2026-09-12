@@ -47,10 +47,13 @@ export const Board: React.FC<BoardProps> = ({ isSidebarHidden = false }) => {
   };
 
   return (
-    <div className="board-viewport">
+    <div className="board-viewport" style={{ width: '100%', height: '100vh', display: 'flex', flex: 1 }}>
       <div 
         className="board-grid-wrapper"
         style={{
+          /* 2. MUDANÇA AQUI: Adicionado width e height 100% dentro do grid */
+          width: '100%',
+          height: '100%',
           gridTemplateColumns: `repeat(${dimensions.cols}, minmax(0, 1fr))`,
           gridTemplateRows: `repeat(${dimensions.rows}, minmax(0, 1fr))`
         }}
@@ -86,8 +89,6 @@ export const Board: React.FC<BoardProps> = ({ isSidebarHidden = false }) => {
           const sectorData = SECTOR_INFO[tile.sector];
           const sectorColor = sectorData?.color || '#38bdf8';
 
-          // Regra de Empilhamento / Agrupamento de UI:
-          // Se houver 3 ou mais peões, exibe 2 e o badge "+N"
           const maxVisiblePawns = 2;
           const visiblePawns = tilePlayers.slice(0, maxVisiblePawns);
           const hiddenCount = tilePlayers.length - maxVisiblePawns;
@@ -97,6 +98,9 @@ export const Board: React.FC<BoardProps> = ({ isSidebarHidden = false }) => {
               key={tile.id}
               className={`board-tile ${isActiveTile ? 'active-tile' : ''}`}
               style={{
+                /* 3. MUDANÇA AQUI: Forçando a casa a ocupar 100% do quadrado dela */
+                width: '100%',
+                height: '100%',
                 gridRow: tile.gridRow,
                 gridColumn: tile.gridColumn,
                 background: `radial-gradient(circle at top left, ${sectorColor}38 0%, ${sectorColor}1a 70%, rgba(15, 23, 42, 0.92) 100%)`,
@@ -108,6 +112,7 @@ export const Board: React.FC<BoardProps> = ({ isSidebarHidden = false }) => {
               onClick={() => openTileInspectModal(tile.index)}
               title={`Casa ${tile.index}: ${tile.title} (${tile.sector} - Clique para detalhes)`}
             >
+              {/* O conteúdo da casa (headers, ícones e peões) continua EXATAMENTE igual */}
               <div className="tile-header">
                 <span className="tile-index">#{tile.index}</span>
                 {tile.type === 'Inicio' && (
@@ -128,7 +133,6 @@ export const Board: React.FC<BoardProps> = ({ isSidebarHidden = false }) => {
                 </span>
               </div>
 
-              {/* Peões na Casa */}
               <div className="tile-pawns-container">
                 {visiblePawns.map(p => {
                   const isMoving = movingPlayerId === p.id;

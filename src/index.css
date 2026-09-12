@@ -1186,3 +1186,58 @@ h1, h2, h3, h4, h5, h6 {
   cursor: not-allowed;
   filter: grayscale(0.8);
 }
+
+/* --- ADICIONE ISSO NO FINAL DO INDEX.CSS --- */
+
+/* Força a área que segura o tabuleiro a usar 100% do espaço da tela */
+.board-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+  flex: 1;
+}
+
+/* Força o grid das casas a se esticar (o 1fr faz a mágica aqui) */
+.board-grid-stretched {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  gap: 4px; /* Espaço entre as casas */
+}
+
+/* Força cada casa individual a esticar e ocupar todo o espaço */
+.casa-stretched {
+  width: 100%;
+  height: 100%;
+  min-height: 50px; /* Garante que não fiquem espremidas demais */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.board-viewport {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: calc(100vh - 100px) !important;
+  display: flex !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+}
+
+.board-grid-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important; /* Destrói qualquer limite de largura antigo */
+  max-height: none !important; /* Destrói qualquer limite de altura antigo */
+  aspect-ratio: auto !important; /* Impede o navegador de forçar um quadrado perfeito */
+  flex: 1 !important;
+}
+
+.board-tile {
+  width: 100% !important;
+  height: 100% !important;
+}
