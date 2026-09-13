@@ -21,11 +21,6 @@ export function getTileCoordinates(index: number, boardSize: BoardSize): { gridR
   const { cols, rows } = getGridDimensions(boardSize);
 
   if (boardSize === 30) {
-    // 9 cols, 8 rows:
-    // Top: col 1..9, row 1 (9 tiles: 0..8)
-    // Right: col 9, row 2..7 (6 tiles: 9..14)
-    // Bottom: col 9..1, row 8 (9 tiles: 15..23)
-    // Left: col 1, row 7..2 (6 tiles: 24..29)
     if (index < 9) {
       return { gridRow: 1, gridColumn: index + 1 };
     } else if (index < 15) {
@@ -38,12 +33,6 @@ export function getTileCoordinates(index: number, boardSize: BoardSize): { gridR
   }
 
   if (boardSize === 45) {
-    // 13 cols, 12 rows:
-    // Top: col 1..13, row 1 (13 tiles: 0..12)
-    // Right: col 13, row 2..11 (10 tiles: 13..22)
-    // Bottom: col 13..1, row 12 (13 tiles: 23..35)
-    // Left: col 1, row 11..4 (8 tiles: 36..43)
-    // Tile 44: row 2, col 2 (Acesso executivo da Diretoria)
     if (index < 13) {
       return { gridRow: 1, gridColumn: index + 1 };
     } else if (index < 23) {
@@ -58,11 +47,6 @@ export function getTileCoordinates(index: number, boardSize: BoardSize): { gridR
   }
 
   // boardSize === 60:
-  // 17 cols, 15 rows:
-  // Top: col 1..17, row 1 (17 tiles: 0..16)
-  // Right: col 17, row 2..14 (13 tiles: 17..29)
-  // Bottom: col 17..1, row 15 (17 tiles: 30..46)
-  // Left: col 1, row 14..2 (13 tiles: 47..59)
   if (index < 17) {
     return { gridRow: 1, gridColumn: index + 1 };
   } else if (index < 30) {
@@ -74,6 +58,7 @@ export function getTileCoordinates(index: number, boardSize: BoardSize): { gridR
   }
 }
 
+// INCLUÍDOS OS NOVOS SETORES: 'Juridico' e 'PeD'
 const SECTORS_SEQUENCE: SectorType[] = [
   'RH',
   'Marketing',
@@ -82,9 +67,12 @@ const SECTORS_SEQUENCE: SectorType[] = [
   'Logística',
   'Produção',
   'Tecnologia',
-  'Diretoria'
+  'Diretoria',
+  'Juridico',
+  'PeD'
 ];
 
+// TEXTOS E VALORES ATUALIZADOS PARA A NOVA ECONOMIA (X10)
 const TILE_TEMPLATES: Array<{
   type: TileType;
   title: string;
@@ -95,52 +83,52 @@ const TILE_TEMPLATES: Array<{
   {
     type: 'Oportunidade',
     title: 'Contrato Relâmpago',
-    description: 'Um novo cliente assinou pedido imediato. Ganhe +R$ 2.000 e +1 Cliente.',
-    actionText: '+R$ 2.000 | +1 Cliente'
+    description: 'Um novo cliente assinou pedido imediato. Ganhe +R$ 20.000 e +2 Clientes.',
+    actionText: '+R$ 20.000 | +2 Clientes'
   },
   {
     type: 'Crise',
     title: 'Glitch Operacional',
-    description: 'Falha técnica gerou cancelamento de pedidos. Perca R$ 1.500 ou gaste 5 Pontos corporativos para anular.',
-    actionText: 'Risco: -R$ 1.500 (ou 5 pts)'
+    description: 'Falha técnica gerou cancelamento de pedidos. Perca R$ 15.000 ou gaste 5 Pontos corporativos para anular.',
+    actionText: 'Risco: -R$ 15.000 (ou 5 pts)'
   },
   {
     type: 'Investimento',
     title: 'Rodada de Seed Capital',
-    description: 'Aporte de R$ 3.000 para gerar +3 Mercadorias e +2 Pontos de prestígio.',
-    actionText: 'Pagar R$ 3.000 -> +3 Mercadorias, +2 Pts',
-    requiredLevel: 1
+    description: 'Aporte de R$ 30.000 para gerar +5 Mercadorias e +3 Pontos de prestígio.',
+    actionText: 'Pagar R$ 30.000 -> +5 Mercadorias, +3 Pts',
+    requiredLevel: 2
   },
   {
     type: 'Desafio',
-    title: 'Comitê de Crise',
-    description: 'Situação adversa sorteada pelo sistema! O Narrador julgará a sua argumentação.',
-    actionText: 'Carta de Desafio'
+    title: 'Sabatina do Setor',
+    description: 'O Narrador elaborará uma pergunta específica desta área. Prepare-se para responder em 30 segundos!',
+    actionText: 'Desafio do Narrador'
   },
   {
     type: 'Negociação',
-    title: 'Mesa de Fusões & Aquisições',
-    description: 'Momento de negociação livre com outros executivos ou proposta de aliança corporativa.',
-    actionText: 'Negociação Aberta'
+    title: 'Mesa de Licitação',
+    description: 'Abra uma rodada de propostas! Você dita as regras e recebe ofertas de troca dos outros executivos.',
+    actionText: 'Licitação Aberta (1 min)'
   },
   {
     type: 'Oportunidade',
     title: 'Inovação de Processos',
-    description: 'Redução de custos operacionais e aumento de produtividade. Ganhe +2 Mercadorias e +1 Ponto.',
-    actionText: '+2 Mercadorias | +1 Ponto'
+    description: 'Redução de custos operacionais e aumento de produtividade. Ganhe +5 Mercadorias e +3 Pontos corporativos.',
+    actionText: '+5 Mercadorias | +3 Pontos'
   },
   {
     type: 'Crise',
     title: 'Fuga de Talentos',
-    description: 'Headhunter concorrente aliciou colaboradores chave. Perca 1 Funcionário ou pague R$ 2.500 de bônus de retenção.',
-    actionText: '-1 Funcionário ou -R$ 2.500'
+    description: 'Headhunter concorrente aliciou colaboradores chave. Perca 2 Funcionários ou pague R$ 15.000 de retenção.',
+    actionText: '-2 Funcionários ou -R$ 15.000'
   },
   {
     type: 'Investimento',
     title: 'Expansão de Mercado',
-    description: 'Campanha de expansão regional. Pague R$ 4.000 para conquistar +3 Clientes e +1 Nível.',
-    actionText: 'Pagar R$ 4.000 -> +3 Clientes',
-    requiredLevel: 2
+    description: 'Campanha de expansão regional robusta. Pague R$ 40.000 para conquistar +5 Clientes e +5 Pontos corporativos.',
+    actionText: 'Pagar R$ 40.000 -> +5 Clientes, +5 Pts',
+    requiredLevel: 3
   }
 ];
 
@@ -184,7 +172,7 @@ export function generateBoardTiles(boardSize: BoardSize): Tile[] {
         sector: 'Diretoria',
         type: 'Inicio',
         title: 'LARGADA CORPORATIVA',
-        description: 'Ponto de partida da corrida empresarial. Cada volta completa garante bônus de R$ 3.000 e +1 Ponto!',
+        description: 'Ponto de partida. Cada volta completa garante +R$ 30.000 e +5 Pontos corporativos de prestígio!',
         actionText: 'Início da Corrida',
         gridRow: coords.gridRow,
         gridColumn: coords.gridColumn,

@@ -37,9 +37,10 @@ export const GameModals: React.FC = () => {
 
   // Inicializa timer quando modal de desafio abre
   useEffect(() => {
-    if (activeModal.type === 'CHALLENGE' && activeModal.card?.timeLimitSeconds) {
-      setTimerSeconds(activeModal.card.timeLimitSeconds);
-      setIsTimerRunning(true);
+    if (activeModal.type === 'CHALLENGE') {
+      // Começa travado em 30s esperando o Narrador apertar Iniciar
+      setTimerSeconds(30);
+      setIsTimerRunning(false);
     } else if (activeModal.type === 'FINAL_BOARDROOM') {
       setTimerSeconds(60);
       setIsTimerRunning(true);
@@ -202,7 +203,7 @@ export const GameModals: React.FC = () => {
     );
   }
 
-  // 3. MODAL DE DESAFIO NARRATIVO / INSTANTÂNEO
+  // 3. MODAL DE DESAFIO NARRATIVO / DINÂMICO
   if (activeModal.type === 'CHALLENGE' && activeModal.card) {
     const card = activeModal.card;
     const sector = SECTOR_INFO[card.sector];
@@ -219,40 +220,69 @@ export const GameModals: React.FC = () => {
                 <Briefcase size={22} />
               </div>
               <div>
-                <h3 className="modal-title">{card.title}</h3>
-                <span className="modal-sector-tag">{sector?.label}</span>
+                {/* Título adaptado para exibir apenas "Desafio: Setor RH", etc. */}
+                <h3 className="modal-title">Desafio: {sector?.label || card.sector}</h3>
+                <span className="modal-sector-tag">Sabatina do Narrador</span>
               </div>
             </div>
           </div>
 
           <div className="modal-body">
-            <div className="modal-scenario-box">
-              {card.scenario}
+            {/* Caixa de Texto Substituída */}
+            <div className="modal-scenario-box" style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '10px' }}>
+                O Narrador fará uma pergunta exclusiva relacionada ao <strong>{sector?.label || card.sector}</strong>.
+              </div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                Assim que a pergunta for feita, inicie o cronômetro. Você terá 30 segundos para responder!
+              </div>
             </div>
 
-            {/* Cronômetro se for discursivo */}
-            {card.timeLimitSeconds && (
-              <div className="modal-timer-badge">
-                <Clock size={22} />
-                <span>{timerSeconds}s</span>
+            {/* Painel do Cronômetro */}
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column',
+              alignItems: 'center', 
+              gap: '1rem', 
+              background: 'rgba(15, 23, 42, 0.4)', 
+              padding: '1.5rem', 
+              borderRadius: '8px', 
+              border: '1px solid var(--border-glow)',
+              marginBottom: '1.5rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '2rem', fontWeight: 900, color: timerSeconds <= 10 ? 'var(--accent-rose)' : 'var(--accent-emerald)' }}>
+                <Clock size={32} />
+                <span>00:{timerSeconds.toString().padStart(2, '0')}</span>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <button 
                   type="button" 
                   onClick={() => setIsTimerRunning(!isTimerRunning)} 
-                  className="secondary-btn"
-                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}
+                  className={isTimerRunning ? 'btn-neutral' : 'btn-approve'}
+                  style={{ padding: '0.6rem 1.2rem' }}
                 >
-                  {isTimerRunning ? 'Pausar' : 'Iniciar'}
+                  {isTimerRunning ? 'Pausar Tempo' : timerSeconds === 30 ? '▶ Iniciar Cronômetro' : '▶ Continuar'}
+                </button>
+                
+                <button 
+                  type="button" 
+                  onClick={() => { setTimerSeconds(30); setIsTimerRunning(false); }} 
+                  className="btn-neutral"
+                  style={{ padding: '0.6rem 1.2rem' }}
+                >
+                  <RotateCcw size={16} /> Reset
                 </button>
               </div>
-            )}
+            </div>
 
             <div className="modal-consequences-grid">
               <div className="consequence-card reward">
-                <span className="consequence-title">Aprovação do Narrador</span>
+                <span className="consequence-title">Se Aprovar</span>
                 <span className="consequence-desc">{card.approvalReward.text}</span>
               </div>
               <div className="consequence-card penalty">
-                <span className="consequence-title">Recusa do Narrador</span>
+                <span className="consequence-title">Se Recusar</span>
                 <span className="consequence-desc">{card.rejectionPenalty.text}</span>
               </div>
             </div>
@@ -264,14 +294,14 @@ export const GameModals: React.FC = () => {
               onClick={() => resolveChallenge(false)}
               className="btn-reject"
             >
-              <X size={18} /> Narrador: Recusar
+              <X size={18} /> Recusar
             </button>
             <button
               type="button"
               onClick={() => resolveChallenge(true)}
               className="btn-approve"
             >
-              <Check size={18} /> Narrador: Aprovar
+              <Check size={18} /> Aprovar
             </button>
           </div>
         </div>
@@ -355,7 +385,6 @@ export const GameModals: React.FC = () => {
     const reqLevel = activeModal.tile?.requiredLevel || 1;
     let effectiveLevel = activePlayer?.level ?? 0;
     if (activePlayer?.alliance) {
-      // Níveis de aliados se somam
       effectiveLevel += 1; // Soma de aliados
     }
     const hasRequiredLevel = effectiveLevel >= reqLevel;

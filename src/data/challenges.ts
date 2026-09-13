@@ -1,6 +1,7 @@
-import type { ChallengeCard, SectorType } from '../types/game';
+import type { ChallengeCard } from '../types/game';
 
-export const SECTOR_INFO: Record<SectorType, { label: string; color: string; bgGradient: string; iconName: string }> = {
+// Mudamos para Record<string, ...> para aceitar os novos setores sem quebrar a tipagem antiga
+export const SECTOR_INFO: Record<string, { label: string; color: string; bgGradient: string; iconName: string }> = {
   RH: {
     label: 'Recursos Humanos',
     color: '#38bdf8',
@@ -48,236 +49,132 @@ export const SECTOR_INFO: Record<SectorType, { label: string; color: string; bgG
     color: '#eab308',
     bgGradient: 'linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(202, 138, 4, 0.1))',
     iconName: 'Crown'
+  },
+  // NOVOS SETORES ADICIONADOS:
+  Juridico: {
+    label: 'Departamento Jurídico',
+    color: '#ef4444', 
+    bgGradient: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.05))',
+    iconName: 'Scale'
+  },
+  PeD: {
+    label: 'Pesquisa e Desenvolvimento (P&D)',
+    color: '#6366f1', 
+    bgGradient: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(79, 70, 229, 0.05))',
+    iconName: 'Lightbulb'
   }
 };
 
+// Como o cenário é genérico agora, focamos em variações altas de recompensas e riscos
+const GENERIC_SCENARIO = 'Atenção, Executivo! O Narrador irá ditar o desafio deste setor. Você tem 30 segundos para formular sua resposta e convencer a mesa.';
+
 export const CHALLENGE_CARDS: ChallengeCard[] = [
-  // Tecnologia
   {
     id: 'tech-1',
-    title: 'Ataque de Ransomware',
+    title: 'Oportunidade Digital',
     sector: 'Tecnologia',
     type: 'narrative',
-    scenario: 'Os servidores centrais foram criptografados por hackers exigindo resgate. Você tem 45 segundos para explicar ao conselho seu protocolo de contingência e contenção.',
-    timeLimitSeconds: 45,
-    approvalReward: {
-      text: 'Protocolo de segurança impecável! A reputação corporativa foi salva.',
-      points: 3,
-      balance: 1500
-    },
-    rejectionPenalty: {
-      text: 'Vazamento de dados críticos. Multa regulatória pesada e perda de clientes.',
-      balance: -2500,
-      clients: -1
-    }
+    scenario: GENERIC_SCENARIO,
+    timeLimitSeconds: 30,
+    approvalReward: { text: 'Inovação aprovada! Sistema modernizado com sucesso.', points: 8, balance: 15000, clients: 3 },
+    rejectionPenalty: { text: 'Projeto com falhas de segurança críticas.', balance: -8000, points: -3 }
   },
-  {
-    id: 'tech-2',
-    title: 'Apagão em Nuvem',
-    sector: 'Tecnologia',
-    type: 'instant',
-    scenario: 'A infraestrutura de nuvem caiu em pleno horário de pico! O sistema de checkout ficou fora do ar por 2 horas.',
-    approvalReward: {
-      text: 'Recuperação com redundância aprovada pelo CTO.',
-      points: 1
-    },
-    rejectionPenalty: {
-      text: 'Prejuízo direto de transações perdidas.',
-      balance: -1800
-    }
-  },
-
-  // Marketing
   {
     id: 'mkt-1',
-    title: 'Pitch Relâmpago: Novo Slogan',
+    title: 'Campanha de Alto Impacto',
     sector: 'Marketing',
     type: 'narrative',
-    scenario: 'Você precisa criar um slogan marcante para o produto de lançamento da empresa em 30 segundos e convencer a bancada!',
+    scenario: GENERIC_SCENARIO,
     timeLimitSeconds: 30,
-    approvalReward: {
-      text: 'Slogan viralizou nas redes sociais! Explosão de novos clientes e visibilidade.',
-      clients: 2,
-      points: 2,
-      balance: 1000
-    },
-    rejectionPenalty: {
-      text: 'Ideia genérica rejeitada pelo público. Campanha flopou.',
-      points: -1,
-      balance: -500
-    }
+    approvalReward: { text: 'Campanha viral! A marca dominou o mercado global.', clients: 6, points: 10, balance: 25000 },
+    rejectionPenalty: { text: 'Boicote! O mercado rejeitou a campanha agressiva.', points: -4, balance: -15000, clients: -2 }
   },
-  {
-    id: 'mkt-2',
-    title: 'Crise de Cancelamento Digital',
-    sector: 'Marketing',
-    type: 'narrative',
-    scenario: 'Uma postagem polêmica de um executivo gerou boicote de consumidores. Explique em 40 segundos seu plano de relações públicas para mitigar o impacto.',
-    timeLimitSeconds: 40,
-    approvalReward: {
-      text: 'Gestão de crise exemplar e pedido de desculpas humanizado!',
-      points: 2,
-      clients: 1
-    },
-    rejectionPenalty: {
-      text: 'Boicote massivo. Clientes cancelaram contratos.',
-      clients: -2,
-      balance: -1500
-    }
-  },
-
-  // Vendas
   {
     id: 'vendas-1',
-    title: 'Negociação com Big Player',
+    title: 'Fechamento de Conta Global',
     sector: 'Vendas',
     type: 'narrative',
-    scenario: 'Um grande grupo multinacional quer fechar um contrato anual, mas exige desconto agressivo ou cláusula de exclusividade. Convença o Narrador da sua proposta em 45 segundos.',
-    timeLimitSeconds: 45,
-    approvalReward: {
-      text: 'Contrato fechado com excelente margem de lucro!',
-      balance: 4000,
-      clients: 2,
-      points: 2
-    },
-    rejectionPenalty: {
-      text: 'O cliente fechou com a concorrência.',
-      balance: -800
-    }
+    scenario: GENERIC_SCENARIO,
+    timeLimitSeconds: 30,
+    approvalReward: { text: 'Mega contrato assinado com multinacional!', balance: 40000, clients: 5, points: 8 },
+    rejectionPenalty: { text: 'O cliente gigante assinou com seu pior concorrente.', balance: -20000, clients: -2 }
   },
-  {
-    id: 'vendas-2',
-    title: 'Quebra de Contrato Imprevista',
-    sector: 'Vendas',
-    type: 'instant',
-    scenario: 'Um dos principais clientes rescindiu o contrato unilateralmente alegando corte interno de orçamento.',
-    approvalReward: {
-      text: 'Multa rescisória cobrada judicialmente com sucesso.',
-      balance: 1200
-    },
-    rejectionPenalty: {
-      text: 'Perda do cliente e faturamento estornado.',
-      clients: -1,
-      balance: -1000
-    }
-  },
-
-  // RH
   {
     id: 'rh-1',
-    title: 'Ameaça de Greve no Setor Operacional',
+    title: 'Gestão de Talentos',
     sector: 'RH',
     type: 'narrative',
-    scenario: 'O sindicato exige aumento de benefícios e redução da jornada sob pena de paralisação total. Apresente em 45 segundos seu acordo de conciliação.',
-    timeLimitSeconds: 45,
-    approvalReward: {
-      text: 'Acordo firmado pacificamente, retenção dos colaboradores!',
-      points: 2,
-      employees: 1
-    },
-    rejectionPenalty: {
-      text: 'Greve deflagrada por 3 dias e debandada de talentos.',
-      employees: -1,
-      balance: -2000
-    }
+    scenario: GENERIC_SCENARIO,
+    timeLimitSeconds: 30,
+    approvalReward: { text: 'Líderes inspirados e equipe de alto desempenho formada!', points: 12, employees: 4, balance: 10000 },
+    rejectionPenalty: { text: 'Debandada geral! Talentos foram para a concorrência.', employees: -3, balance: -12000, points: -2 }
   },
-  {
-    id: 'rh-2',
-    title: 'Caça de Talentos Estratégicos (Headhunting)',
-    sector: 'RH',
-    type: 'instant',
-    scenario: 'Uma consultoria identificou executivos sêniores da concorrência prontos para migrarem para sua empresa.',
-    approvalReward: {
-      text: 'Novos talentos contratados elevam a produtividade corporativa!',
-      employees: 2,
-      points: 1
-    },
-    rejectionPenalty: {
-      text: 'Custo de processo seletivo sem contratações efetivas.',
-      balance: -1000
-    }
-  },
-
-  // Financeiro
   {
     id: 'fin-1',
-    title: 'Auditoria Fiscal Inesperada',
+    title: 'Manobra Fiscal Estratégica',
     sector: 'Financeiro',
     type: 'narrative',
-    scenario: 'Auditores fiscais identificaram inconsistências nos relatórios contábeis dos últimos dois trimestres. Defenda a conformidade fiscal da sua empresa em 45 segundos.',
-    timeLimitSeconds: 45,
-    approvalReward: {
-      text: 'Balanço aprovado com louvor e compliance comprovado!',
-      points: 3,
-      balance: 1000
-    },
-    rejectionPenalty: {
-      text: 'Autuação fiscal com juros e multa sobre o balanço.',
-      balance: -3000,
-      points: -1
-    }
+    scenario: GENERIC_SCENARIO,
+    timeLimitSeconds: 30,
+    approvalReward: { text: 'Lucro otimizado e caixa blindado!', points: 10, balance: 50000 },
+    rejectionPenalty: { text: 'Auditoria encontrou rombo no caixa da empresa.', balance: -35000, points: -5 }
   },
-  {
-    id: 'fin-2',
-    title: 'Alta Volatilidade de Câmbio',
-    sector: 'Financeiro',
-    type: 'instant',
-    scenario: 'O dólar disparou 12% na semana, encarecendo matéria-prima importada.',
-    approvalReward: {
-      text: 'Operação de hedge cambial protegeu o caixa.',
-      balance: 1500
-    },
-    rejectionPenalty: {
-      text: 'Aumento expressivo no custo financeiro dos estoques.',
-      balance: -2000
-    }
-  },
-
-  // Logística
   {
     id: 'log-1',
-    title: 'Carga Bloqueada na Alfândega',
+    title: 'Expansão de Frota e Rota',
     sector: 'Logística',
     type: 'narrative',
-    scenario: 'Um lote crucial de insumos foi retido na alfândega portuária por divergência de documentação. Como você agiliza o desembaraço em 40 segundos?',
-    timeLimitSeconds: 40,
-    approvalReward: {
-      text: 'Desembaraço concluído em tempo recorde!',
-      goods: 2,
-      points: 2
-    },
-    rejectionPenalty: {
-      text: 'Mercadorias retidas gerando custos de armazenagem portuária.',
-      goods: -1,
-      balance: -1200
-    }
+    scenario: GENERIC_SCENARIO,
+    timeLimitSeconds: 30,
+    approvalReward: { text: 'Cadeia de suprimentos perfeita. Estoque lotado!', goods: 15, points: 6, balance: 18000 },
+    rejectionPenalty: { text: 'Carga perdida e rotas ineficientes geraram prejuízo.', goods: -8, balance: -15000 }
   },
-
-  // Produção
   {
     id: 'prod-1',
-    title: 'Falha Grave na Linha de Produção',
+    title: 'Automação da Fábrica',
     sector: 'Produção',
     type: 'narrative',
-    scenario: 'A esteira automatizada principal quebrou e a fábrica parou. Apresente seu plano para não atrasar as entregas e substituir a máquina em 45 segundos.',
-    timeLimitSeconds: 45,
-    approvalReward: {
-      text: 'Turno extra acionado e manutenção expressa com sucesso!',
-      goods: 3,
-      points: 1
-    },
-    rejectionPenalty: {
-      text: 'Lote com defeito descartado e custo de peças sobressalentes.',
-      goods: -2,
-      balance: -1800
-    }
+    scenario: GENERIC_SCENARIO,
+    timeLimitSeconds: 30,
+    approvalReward: { text: 'Produção recorde alcançada com maquinário novo!', goods: 20, points: 5, balance: 12000 },
+    rejectionPenalty: { text: 'Lotes inteiros de mercadoria perdidos por defeito de fábrica.', goods: -12, balance: -10000 }
+  },
+  // Cartas para os Novos Setores
+  {
+    id: 'jur-1',
+    title: 'Disputa de Patente (Processo)',
+    sector: 'Juridico',
+    type: 'narrative',
+    scenario: GENERIC_SCENARIO,
+    timeLimitSeconds: 30,
+    approvalReward: { text: 'Causa Ganha no tribunal! Indenização milionária recebida.', balance: 35000, points: 10 },
+    rejectionPenalty: { text: 'Processo perdido! Custas judiciais e bloqueio de bens.', balance: -25000, points: -3 }
+  },
+  {
+    id: 'ped-1',
+    title: 'Protótipo de Nova Tecnologia',
+    sector: 'PeD',
+    type: 'narrative',
+    scenario: GENERIC_SCENARIO,
+    timeLimitSeconds: 30,
+    approvalReward: { text: 'Patente revolucionária criada! Vantagem competitiva absurda.', goods: 10, clients: 5, balance: 20000, points: 15 },
+    rejectionPenalty: { text: 'O protótipo explodiu no laboratório. Dinheiro de pesquisa jogado fora.', balance: -30000, points: -5 }
   }
 ];
 
 export const FINAL_BOARDROOM_CHALLENGE = {
-  title: 'Reunião Extraordinária do Conselho da Diretoria (Desafio Final)',
-  scenario: 'Você chegou ao topo da corporação! Para assumir o controle como CEO Vencedor(a), você tem exatamente 60 segundos para apresentar ao Narrador e aos demais executivos seu Plano Estratégico de Expansão Global e Defesa contra Aquisições Hostis. Convença a mesa diretora de que você é o líder supremo desta empresa!',
+  title: 'Reunião Extraordinária do Conselho da Diretoria',
+  scenario: 'Atenção! Para assumir o controle como CEO Vencedor(a), aguarde a pergunta final elaborada pelo Narrador sobre a sua gestão. Você terá exatamente 60 segundos para apresentar sua defesa.',
   timeLimitSeconds: 60,
   approvalText: 'O Conselho aprovou sua liderança por unanimidade! VOCÊ VENCEU A CORRIDA CORPORATIVA!',
-  rejectionText: 'O Conselho considerou sua estratégia insuficiente e imatura para o cargo máximo. Você recua 3 casas e terá que se reestruturar para uma nova sabatina!'
+  rejectionText: 'O Conselho considerou sua resposta insuficiente. Você recua 3 casas e terá que tentar novamente!'
+};
+
+// --- NOVA TABELA DE NÍVEIS CORPORATIVOS ---
+export const getCompanyLevelInfo = (points: number) => {
+  if (points >= 40) return { level: 5, title: 'Empresa Líder' };
+  if (points >= 30) return { level: 4, title: 'Grande Empresa' };
+  if (points >= 20) return { level: 3, title: 'Empresa em Crescimento' };
+  if (points >= 10) return { level: 2, title: 'Pequena Empresa' };
+  return { level: 1, title: 'Microempresa' };
 };

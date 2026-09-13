@@ -7,10 +7,7 @@ export const SetupScreen: React.FC = () => {
   const { setupGame } = useGame();
 
   const [players, setPlayers] = useState<string[]>([
-    'Alpha Corp',
-    'Apex Capital',
-    'Nexus Ventures',
-    'Titan Holdings'
+    
   ]);
   const [newPlayerName, setNewPlayerName] = useState('');
   const [boardSize, setBoardSize] = useState<BoardSize>(30);

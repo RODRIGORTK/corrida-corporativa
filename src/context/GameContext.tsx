@@ -10,30 +10,13 @@ import type {
   Tile 
 } from '../types/game';
 import { generateBoardTiles, shuffleBoardRules } from '../utils/boardGenerator';
-import { CHALLENGE_CARDS } from '../data/challenges';
+import { CHALLENGE_CARDS, getCompanyLevelInfo } from '../data/challenges';
 
 // Cores premium para peões corporativos
 export const PLAYER_PALETTE = [
-  '#3b82f6', // Azul Safira
-  '#10b981', // Esmeralda
-  '#f59e0b', // Âmbar Dourado
-  '#ec4899', // Rosa Executivo
-  '#8b5cf6', // Roxo Real
-  '#06b6d4', // Ciano Tech
-  '#f97316', // Laranja Cobre
-  '#ef4444', // Rubi Intenso
-  '#14b8a6', // Turquesa
-  '#84cc16', // Lima Neon
-  '#6366f1', // Índigo
-  '#d946ef', // Magenta
-  '#eab308', // Ouro Corporativo
-  '#22c55e', // Verde Negócios
-  '#0284c7', // Azul Oceano
-  '#a855f7', // Violeta
-  '#f43f5e', // Rosa Coral
-  '#e11d48', // Carmim
-  '#0d9488', // Teal Escuro
-  '#7c3aed', // Púrpura Imperial
+  '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#f97316', '#ef4444', 
+  '#14b8a6', '#84cc16', '#6366f1', '#d946ef', '#eab308', '#22c55e', '#0284c7', '#a855f7', 
+  '#f43f5e', '#e11d48', '#0d9488', '#7c3aed',
 ];
 
 interface GameContextType {
@@ -68,7 +51,6 @@ interface GameContextType {
   resolveFinalBoardroom: (approved: boolean) => void;
   
   // Progressão e alianças
-  upgradePlayerLevel: (playerId: string) => boolean;
   createAlliance: (playerAId: string, playerBId: string, durationRounds: number) => void;
   breakAlliance: (playerId: string) => void;
   restartGame: () => void;
@@ -82,6 +64,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     boardSize: 30,
     lapLimit: 3
   });
+  // O tabuleiro é gerado e misturado apenas uma vez na inicialização ou no Setup!
   const [tiles, setTiles] = useState<Tile[]>(() => shuffleBoardRules(generateBoardTiles(30)));
   const [players, setPlayers] = useState<Player[]>([]);
   const [activePlayerIndex, setActivePlayerIndex] = useState<number>(0);
@@ -106,18 +89,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLogs(prev => [newLog, ...prev.slice(0, 49)]);
   }, [currentRound]);
 
-  // Ranking em Tempo Real com Desempate Estrito:
-  // 1º Saldo, 2º Mercadorias, 3º Funcionários, 4º Pontos, 5º Clientes
+  // Ranking em Tempo Real
   const ranking = useMemo(() => {
     return [...players].sort((a, b) => {
-      // Eliminados vão para o fim da lista
       if (a.isEliminated && !b.isEliminated) return 1;
       if (!a.isEliminated && b.isEliminated) return -1;
-
-      // Voltas completadas
       if (b.lapsCompleted !== a.lapsCompleted) return b.lapsCompleted - a.lapsCompleted;
-
-      // Critérios Oficiais de Desempate: 1º Saldo, 2º Mercadorias, 3º Funcionários, 4º Pontos, 5º Clientes
       if (b.balance !== a.balance) return b.balance - a.balance;
       if (b.goods !== a.goods) return b.goods - a.goods;
       if (b.employees !== a.employees) return b.employees - a.employees;
@@ -135,6 +112,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const setupGame = useCallback((playerNames: string[], boardSize: BoardSize, lapLimit: number | null) => {
     const baseTiles = generateBoardTiles(boardSize);
     const newTiles = shuffleBoardRules(baseTiles);
+    
     const newPlayers: Player[] = playerNames.map((name, idx) => ({
       id: `p-${idx + 1}-${Math.random().toString(36).substring(2, 6)}`,
       name: name.trim(),
@@ -144,9 +122,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       balance: 10000,
       employees: 2,
       clients: 3,
-      goods: 0,
+      goods: 5,
       points: 0,
-      level: 0,
+      level: 1, // Começa sempre no Nível 1 (Microempresa)
       bankruptcy: {
         inRecovery: false,
         roundsLeft: 2
@@ -169,16 +147,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     addLog(`Partida corporativa iniciada com ${newPlayers.length} executivos. Tabuleiro de ${boardSize} casas. Meta: ${lapLimit ? `${lapLimit} voltas completas` : 'Livre / Sem limite'}.`, 'info');
   }, [addLog]);
 
-  // Aplicação de recursos respeitando Alianças (50% para cada)
+  // Aplicação de recursos com Nível Automático
   const applyResourceChange = useCallback((
     playerId: string,
-    delta: {
-      balance?: number;
-      employees?: number;
-      clients?: number;
-      goods?: number;
-      points?: number;
-    },
+    delta: { balance?: number; employees?: number; clients?: number; goods?: number; points?: number; },
     actionDescription: string
   ) => {
     setPlayers(prevPlayers => {
@@ -195,7 +167,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (!isTarget && !isPartner) return p;
 
-        // Se houver aliança ativa, rateia 50% para cada
         const divisor = partner ? 2 : 1;
 
         const deltaBal = delta.balance ? Math.round(delta.balance / divisor) : 0;
@@ -209,6 +180,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const newClients = Math.max(0, p.clients + deltaCli);
         const newGoods = Math.max(0, p.goods + deltaGood);
         const newPoints = Math.max(0, p.points + deltaPts);
+
+        // --- SISTEMA DE NÍVEL AUTOMÁTICO DE XP ---
+        const newLevelInfo = getCompanyLevelInfo(newPoints);
+        
+        if (newLevelInfo.level > p.level && isTarget) { // Notifica apenas para o alvo principal para não flodar o log
+          addLog(`📈 CRESCIMENTO EXECUTIVO: Com ${newPoints} pontos, ${p.name} evoluiu e agora é uma ${newLevelInfo.title} (Nível ${newLevelInfo.level})!`, 'gain');
+          confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+        } else if (newLevelInfo.level < p.level && isTarget) {
+          addLog(`📉 QUEDA DE MERCADO: ${p.name} perdeu influência e foi rebaixado(a) para ${newLevelInfo.title} (Nível ${newLevelInfo.level}).`, 'loss');
+        }
 
         // Checagem de Recuperação Judicial
         let updatedBankruptcy = { ...p.bankruptcy };
@@ -231,6 +212,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           clients: newClients,
           goods: newGoods,
           points: newPoints,
+          level: newLevelInfo.level, // Salva o nível calculado!
           bankruptcy: updatedBankruptcy
         };
       });
@@ -244,7 +226,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setActiveModal({ type: null });
 
     setPlayers(prevPlayers => {
-      // Checa se há apenas 1 jogador não eliminado
       const activeSurvivors = prevPlayers.filter(p => !p.isEliminated);
       if (activeSurvivors.length === 1 && prevPlayers.length > 1) {
         setWinner(activeSurvivors[0]);
@@ -259,12 +240,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let nextIdx = (prevIdx + 1) % players.length;
       let loops = 0;
 
-      // Se deu uma volta completa na lista de jogadores, avança a rodada
       if (nextIdx === 0) {
+        addLog(`🎲 Nova rodada corporativa iniciada!`, 'info');
+
         setCurrentRound(prevRound => {
           const nextRound = prevRound + 1;
-
-          // Decrementa duração de alianças ativas
           setPlayers(curr => curr.map(p => {
             if (!p.alliance) return p;
             const newRounds = p.alliance.roundsLeft - 1;
@@ -274,12 +254,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             return { ...p, alliance: { ...p.alliance, roundsLeft: newRounds } };
           }));
-
           return nextRound;
         });
       }
 
-      // Pula jogadores eliminados
       while (players[nextIdx]?.isEliminated && loops < players.length) {
         nextIdx = (nextIdx + 1) % players.length;
         loops++;
@@ -287,9 +265,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const nextPlayer = players[nextIdx];
       if (nextPlayer && nextPlayer.bankruptcy.inRecovery) {
-        // Decrementa contador de recuperação judicial (mantida a lógica de 2 rodadas)
         if (nextPlayer.bankruptcy.roundsLeft <= 1 && nextPlayer.balance <= 0) {
-          // Falência irreversível!
           setPlayers(curr => curr.map(p => 
             p.id === nextPlayer.id ? { ...p, isEliminated: true } : p
           ));
@@ -320,7 +296,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [ranking, addLog]);
 
-  // Rolar Dado Físico e Mover Peão Passo a Passo com Animação Fluida
+  // Rolar Dado Físico e Mover Peão
   const rollDiceAndMove = useCallback(async (diceValue: number) => {
     if (!activePlayer || phase !== 'ROLL') return;
 
@@ -332,18 +308,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let currentPos = activePlayer.position;
     let lapsGained = 0;
 
-    // Animação passo a passo
     for (let step = 1; step <= diceValue; step++) {
       await new Promise(resolve => setTimeout(resolve, 320));
       currentPos = (currentPos + 1) % boardLength;
 
-      // Se completou a volta (passou ou parou na casa 0)
       if (currentPos === 0) {
         lapsGained += 1;
         applyResourceChange(
           activePlayer.id, 
-          { balance: 3000, points: 1 }, 
-          `🏁 ${activePlayer.name} completou uma volta inteira no tabuleiro! Ganhou +R$ 3.000 e +1 Ponto.`
+          { balance: 30000, points: 5 }, 
+          `🏁 ${activePlayer.name} completou uma volta inteira! Ganhou +R$ 30.000 e +5 Pontos.`
         );
       }
 
@@ -359,7 +333,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setMovingPlayerId(null);
 
-    // Checagem se atingiu o limite de voltas configurado
     const totalLaps = activePlayer.lapsCompleted + lapsGained;
     if (config.lapLimit && totalLaps >= config.lapLimit) {
       endGameByLimit();
@@ -371,66 +344,43 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const landingTile = tiles[currentPos];
     addLog(`${activePlayer.name} parou na casa [${landingTile.index}]: ${landingTile.title}`, 'info');
 
-    // Despacho da ação da casa
     if (landingTile.type === 'DiretoriaFinal') {
-      setActiveModal({
-        type: 'FINAL_BOARDROOM',
-        tile: landingTile
-      });
+      setActiveModal({ type: 'FINAL_BOARDROOM', tile: landingTile });
       return;
     }
 
     if (landingTile.type === 'Desafio') {
-      // Sorteia carta de desafio corporativo
       const matchingSector = CHALLENGE_CARDS.filter(c => c.sector === landingTile.sector);
       const pool = matchingSector.length > 0 ? matchingSector : CHALLENGE_CARDS;
       const card = pool[Math.floor(Math.random() * pool.length)];
 
-      setActiveModal({
-        type: 'CHALLENGE',
-        tile: landingTile,
-        card
-      });
+      setActiveModal({ type: 'CHALLENGE', tile: landingTile, card });
       return;
     }
 
     if (landingTile.type === 'Crise') {
-      setActiveModal({
-        type: 'CRISIS',
-        tile: landingTile
-      });
+      setActiveModal({ type: 'CRISIS', tile: landingTile });
       return;
     }
 
     if (landingTile.type === 'Investimento') {
-      setActiveModal({
-        type: 'INVESTMENT',
-        tile: landingTile
-      });
+      setActiveModal({ type: 'INVESTMENT', tile: landingTile });
       return;
     }
 
     if (landingTile.type === 'Oportunidade') {
       applyResourceChange(
         activePlayer.id,
-        { balance: 2000, clients: 1 },
-        `✨ ${activePlayer.name} aproveitou a Oportunidade: +R$ 2.000 e +1 Cliente!`
+        { balance: 20000, clients: 1 },
+        `✨ ${activePlayer.name} aproveitou a Oportunidade: +R$ 20.000 e +1 Cliente!`
       );
-      setActiveModal({
-        type: 'TILE_INFO',
-        tile: landingTile
-      });
+      setActiveModal({ type: 'TILE_INFO', tile: landingTile });
       return;
     }
 
-    // Negociação ou Início
-    setActiveModal({
-      type: 'TILE_INFO',
-      tile: landingTile
-    });
-  }, [activePlayer, phase, tiles, addLog, applyResourceChange]);
+    setActiveModal({ type: 'TILE_INFO', tile: landingTile });
+  }, [activePlayer, phase, tiles, addLog, applyResourceChange, config.lapLimit, endGameByLimit]);
 
-  // Resolução do Desafio do Narrador (Aprovar / Recusar)
   const resolveChallenge = useCallback((approved: boolean) => {
     if (!activePlayer || !activeModal.card) return;
     const card = activeModal.card;
@@ -439,166 +389,107 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       applyResourceChange(
         activePlayer.id,
         card.approvalReward,
-        `🏆 NARRADOR APROVOU: ${activePlayer.name} superou o desafio "${card.title}"! Recompensa: ${card.approvalReward.text}`
+        `🏆 NARRADOR APROVOU: ${activePlayer.name} superou o desafio! Recompensa concedida.`
       );
       confetti({ particleCount: 60, spread: 50 });
     } else {
       applyResourceChange(
         activePlayer.id,
         card.rejectionPenalty,
-        `❌ NARRADOR RECUSOU: ${activePlayer.name} não convenceu no desafio "${card.title}". Penalidade: ${card.rejectionPenalty.text}`
+        `❌ NARRADOR RECUSOU: ${activePlayer.name} falhou no desafio. Penalidade aplicada.`
       );
     }
-
     advanceTurn();
   }, [activePlayer, activeModal.card, applyResourceChange, advanceTurn]);
 
-  // Resolução de Crise (Pagar prejuízo ou gastar 5 pontos para anular)
   const resolveCrisis = useCallback((cancelWithPoints: boolean) => {
     if (!activePlayer) return;
-
     if (cancelWithPoints) {
       if (activePlayer.points >= 5) {
-        setPlayers(prev => prev.map(p => 
-          p.id === activePlayer.id ? { ...p, points: p.points - 5 } : p
-        ));
-        addLog(`🛡️ PODER CORPORATIVO: ${activePlayer.name} gastou 5 Pontos corporativos para ANULAR completamente as perdas da crise!`, 'gain');
+        applyResourceChange(activePlayer.id, { points: -5 }, `🛡️ PODER CORPORATIVO: ${activePlayer.name} gastou 5 Pontos para ANULAR a crise!`);
       } else {
-        addLog(`${activePlayer.name} não possui 5 pontos para anular. Prejuízo aplicado.`, 'loss');
-        applyResourceChange(activePlayer.id, { balance: -1500 }, `💥 ${activePlayer.name} sofreu perdas financeiras na crise: -R$ 1.500`);
+        applyResourceChange(activePlayer.id, { balance: -15000 }, `💥 ${activePlayer.name} tentou anular sem pontos e sofreu a crise: -R$ 15.000`);
       }
     } else {
-      applyResourceChange(activePlayer.id, { balance: -1500 }, `💥 ${activePlayer.name} absorveu a crise corporativa: -R$ 1.500`);
+      applyResourceChange(activePlayer.id, { balance: -15000 }, `💥 ${activePlayer.name} absorveu a crise corporativa: -R$ 15.000`);
     }
-
     advanceTurn();
-  }, [activePlayer, applyResourceChange, advanceTurn, addLog]);
+  }, [activePlayer, applyResourceChange, advanceTurn]);
 
-  // Resolução de Investimento
   const resolveInvestment = useCallback((invest: boolean) => {
     if (!activePlayer) return;
 
     if (invest) {
-      // Requisito de nível (soma se tiver aliado)
       let effectiveLevel = activePlayer.level;
-      if (activePlayer.alliance) {
-        const ally = players.find(p => p.id === activePlayer.alliance?.partnerId);
-        if (ally) effectiveLevel += ally.level;
-      }
+      if (activePlayer.alliance) effectiveLevel += 1;
 
       const reqLevel = activeModal.tile?.requiredLevel || 1;
       if (effectiveLevel >= reqLevel) {
         applyResourceChange(
           activePlayer.id,
-          { balance: -3000, goods: 3, points: 2 },
-          `📈 INVESTIMENTO REALIZADO: ${activePlayer.name} investiu R$ 3.000 e obteve +3 Mercadorias e +2 Pontos corporativos!`
+          { balance: -30000, goods: 3, points: 2 },
+          `📈 INVESTIMENTO: ${activePlayer.name} investiu R$ 30.000 e obteve +3 Mercadorias e +2 Pontos!`
         );
       } else {
         addLog(`⚠️ Investimento cancelado: Requer Nível ${reqLevel} (Nível disponível: ${effectiveLevel}).`, 'info');
       }
     }
-
     advanceTurn();
-  }, [activePlayer, activeModal.tile, players, applyResourceChange, advanceTurn, addLog]);
+  }, [activePlayer, activeModal.tile, applyResourceChange, advanceTurn, addLog]);
 
-  // Resolução do Desafio Final da Linha de Chegada
   const resolveFinalBoardroom = useCallback((approved: boolean) => {
     if (!activePlayer) return;
 
     if (approved) {
-      setPlayers(prev => prev.map(p => 
-        p.id === activePlayer.id ? { ...p, hasWon: true } : p
-      ));
+      setPlayers(prev => prev.map(p => p.id === activePlayer.id ? { ...p, hasWon: true } : p));
       setWinner(activePlayer);
       setPhase('GAME_OVER');
-      addLog(`👑 VITÓRIA HISTÓRICA! O Conselho de Administração aclamou ${activePlayer.name} como o(a) Vencedor(a) da Corrida Corporativa!`, 'victory');
+      addLog(`👑 VITÓRIA HISTÓRICA! O Conselho de Administração aclamou ${activePlayer.name} como o(a) Vencedor(a)!`, 'victory');
       confetti({ particleCount: 300, spread: 120 });
     } else {
-      // Recua 3 casas
       const boardLength = tiles.length;
       const newPos = (activePlayer.position - 3 + boardLength) % boardLength;
-      setPlayers(prev => prev.map(p => 
-        p.id === activePlayer.id ? { ...p, position: newPos } : p
-      ));
+      setPlayers(prev => prev.map(p => p.id === activePlayer.id ? { ...p, position: newPos } : p));
       addLog(`📉 REPROVADO NA SABATINA: O Conselho recusou o plano de ${activePlayer.name}. O executivo recuou 3 casas!`, 'crisis');
       advanceTurn();
     }
   }, [activePlayer, tiles.length, addLog, advanceTurn]);
 
-  // Subir Nível (Custa 5 pontos para subir 1 nível, máx 5)
-  const upgradePlayerLevel = useCallback((playerId: string): boolean => {
-    let success = false;
-    setPlayers(prev => prev.map(p => {
-      if (p.id !== playerId) return p;
-      if (p.points >= 5 && p.level < 5) {
-        success = true;
-        const newLevel = p.level + 1;
-        addLog(`⭐ PROMOÇÃO EXECUTIVA: ${p.name} subiu para o Nível ${newLevel} de Liderança Corporativa!`, 'gain');
-        return {
-          ...p,
-          points: p.points - 5,
-          level: newLevel
-        };
-      }
-      return p;
-    }));
-    return success;
-  }, [addLog]);
-
-  // Criar Aliança Corporativa
   const createAlliance = useCallback((playerAId: string, playerBId: string, durationRounds: number) => {
     const playerA = players.find(p => p.id === playerAId);
     const playerB = players.find(p => p.id === playerBId);
     if (!playerA || !playerB || playerAId === playerBId) return;
 
     setPlayers(prev => prev.map(p => {
-      if (p.id === playerAId) {
-        return { ...p, alliance: { partnerId: playerBId, roundsLeft: durationRounds } };
-      }
-      if (p.id === playerBId) {
-        return { ...p, alliance: { partnerId: playerAId, roundsLeft: durationRounds } };
-      }
+      if (p.id === playerAId) return { ...p, alliance: { partnerId: playerBId, roundsLeft: durationRounds } };
+      if (p.id === playerBId) return { ...p, alliance: { partnerId: playerAId, roundsLeft: durationRounds } };
       return p;
     }));
-
-    addLog(`🤝 FUSÃO CORPORATIVA: ${playerA.name} e ${playerB.name} formaram uma aliança estratégica por ${durationRounds} rodadas! Recursos e riscos serão rateados igualmente.`, 'alliance');
+    addLog(`🤝 FUSÃO: ${playerA.name} e ${playerB.name} formaram aliança por ${durationRounds} rodadas! Recursos rateados.`, 'alliance');
   }, [players, addLog]);
 
-  // Romper Aliança
   const breakAlliance = useCallback((playerId: string) => {
     const target = players.find(p => p.id === playerId);
     if (!target || !target.alliance) return;
     const partnerId = target.alliance.partnerId;
 
     setPlayers(prev => prev.map(p => {
-      if (p.id === playerId || p.id === partnerId) {
-        return { ...p, alliance: null };
-      }
+      if (p.id === playerId || p.id === partnerId) return { ...p, alliance: null };
       return p;
     }));
-
     addLog(`💔 DISSOLUÇÃO: A aliança de ${target.name} foi encerrada imediatamente.`, 'info');
   }, [players, addLog]);
 
-  // Inspecionar Casa Clicada
   const openTileInspectModal = useCallback((tileIndex: number) => {
     const tile = tiles[tileIndex];
     if (!tile) return;
     const tilePlayers = players.filter(p => p.position === tileIndex && !p.isEliminated);
-
-    setActiveModal({
-      type: 'INSPECT_TILE',
-      tile,
-      tilePlayers
-    });
+    setActiveModal({ type: 'INSPECT_TILE', tile, tilePlayers });
   }, [tiles, players]);
 
   const closeModal = useCallback(() => {
-    if (activeModal.type === 'TILE_INFO') {
-      advanceTurn();
-    } else {
-      setActiveModal({ type: null });
-    }
+    if (activeModal.type === 'TILE_INFO') advanceTurn();
+    else setActiveModal({ type: null });
   }, [activeModal.type, advanceTurn]);
 
   const restartGame = useCallback(() => {
@@ -610,31 +501,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <GameContext.Provider value={{
-      players,
-      ranking,
-      activePlayer,
-      activePlayerIndex,
-      currentRound,
-      tiles,
-      config,
-      phase,
-      logs,
-      activeModal,
-      winner,
-      movingPlayerId,
-      setupGame,
-      rollDiceAndMove,
-      closeModal,
-      openTileInspectModal,
-      resolveChallenge,
-      resolveCrisis,
-      resolveInvestment,
-      resolveFinalBoardroom,
-      upgradePlayerLevel,
-      createAlliance,
-      breakAlliance,
-      restartGame,
-      endGameByLimit
+      players, ranking, activePlayer, activePlayerIndex, currentRound, tiles, config,
+      phase, logs, activeModal, winner, movingPlayerId,
+      setupGame, rollDiceAndMove, closeModal, openTileInspectModal,
+      resolveChallenge, resolveCrisis, resolveInvestment, resolveFinalBoardroom,
+      createAlliance, breakAlliance, restartGame, endGameByLimit
     }}>
       {children}
     </GameContext.Provider>

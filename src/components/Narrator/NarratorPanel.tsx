@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGame } from '../../context/GameContext';
-import { Dices, ArrowRight, Star, Handshake, ScrollText, HeartHandshake } from 'lucide-react';
+import { Dices, ArrowRight, Star, Handshake, ScrollText, HeartHandshake, DollarSign, Package, Users, Briefcase, Award } from 'lucide-react';
 
 export interface NarratorTurnConsoleProps {
   inCenter?: boolean;
@@ -11,7 +11,6 @@ export const NarratorTurnConsole: React.FC<NarratorTurnConsoleProps> = ({ inCent
     activePlayer, 
     phase, 
     rollDiceAndMove, 
-    upgradePlayerLevel, 
     createAlliance, 
     breakAlliance, 
     players,
@@ -32,11 +31,6 @@ export const NarratorTurnConsole: React.FC<NarratorTurnConsoleProps> = ({ inCent
     setDiceInput(val);
   };
 
-  const handleLevelUp = () => {
-    if (!activePlayer) return;
-    upgradePlayerLevel(activePlayer.id);
-  };
-
   const handleCreateAlliance = (e: React.FormEvent) => {
     e.preventDefault();
     if (!activePlayer || !alliancePartnerId) return;
@@ -50,13 +44,23 @@ export const NarratorTurnConsole: React.FC<NarratorTurnConsoleProps> = ({ inCent
     breakAlliance(activePlayer.id);
   };
 
-  const canLevelUp = activePlayer && activePlayer.points >= 5 && activePlayer.level < 5;
   const isMovingOrBusy = phase !== 'ROLL';
 
   // Possíveis parceiros para aliança (não eliminados, não o próprio jogador, sem aliança ativa)
   const eligiblePartners = players.filter(p => 
     p.id !== activePlayer?.id && !p.isEliminated && !p.alliance
   );
+
+  // Retorna o título da empresa baseado no nível atual
+  const getCompanyTitle = (level: number) => {
+    switch (level) {
+      case 5: return 'Empresa Líder';
+      case 4: return 'Grande Empresa';
+      case 3: return 'Empresa em Crescimento';
+      case 2: return 'Pequena Empresa';
+      default: return 'Microempresa';
+    }
+  };
 
   return (
     <div className={`narrator-console ${inCenter ? 'center-stage-console' : ''}`}>
@@ -103,6 +107,74 @@ export const NarratorTurnConsole: React.FC<NarratorTurnConsoleProps> = ({ inCent
         </div>
       </div>
 
+      {/* DASHBOARD DE ESTATÍSTICAS DO JOGADOR + TÍTULO DE NÍVEL */}
+      {activePlayer && (
+        <div style={{
+          backgroundColor: `${activePlayer.color}15`,
+          border: `1px solid ${activePlayer.color}40`,
+          borderRadius: '8px',
+          padding: '0.75rem',
+          marginBottom: '1rem',
+        }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '0.6rem',
+            color: 'var(--text-bright)',
+            marginBottom: '0.6rem'
+          }}>
+            {/* Saldo */}
+            <div title="Saldo Financeiro" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <DollarSign size={14} color={activePlayer.color} />
+              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>
+                {activePlayer.balance >= 1000 ? `${(activePlayer.balance / 1000).toFixed(1)}k` : activePlayer.balance}
+              </span>
+            </div>
+            {/* Produtos */}
+            <div title="Mercadorias / Estoque" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Package size={14} color={activePlayer.color} />
+              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{activePlayer.goods}</span>
+            </div>
+            {/* Clientes */}
+            <div title="Clientes" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Users size={14} color={activePlayer.color} />
+              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{activePlayer.clients}</span>
+            </div>
+            {/* Funcionários */}
+            <div title="Funcionários" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Briefcase size={14} color={activePlayer.color} />
+              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{activePlayer.employees}</span>
+            </div>
+            {/* Pontos (XP) */}
+            <div title="Pontos Corporativos (XP)" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Award size={14} color={activePlayer.color} />
+              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{activePlayer.points} pts</span>
+            </div>
+            {/* Nível Automático */}
+            <div title="Nível Corporativo" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Star size={14} color={activePlayer.color} />
+              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Nv. {activePlayer.level}</span>
+            </div>
+          </div>
+
+          {/* Badge de Título da Empresa */}
+          <div style={{
+            textAlign: 'center',
+            fontSize: '0.75rem',
+            fontWeight: 800,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            padding: '4px 8px',
+            backgroundColor: `${activePlayer.color}25`,
+            borderRadius: '4px',
+            color: 'var(--accent-gold)',
+            border: `1px solid ${activePlayer.color}50`
+          }}>
+            🏢 {getCompanyTitle(activePlayer.level)}
+          </div>
+        </div>
+      )}
+
       {/* Entrada do Dado Físico */}
       <div className="dice-input-group">
         <input
@@ -141,35 +213,25 @@ export const NarratorTurnConsole: React.FC<NarratorTurnConsoleProps> = ({ inCent
         ))}
       </div>
 
-      {/* Ações Especiais do Jogador da Vez */}
+      {/* Alianças (Ações do Jogador da Vez) */}
       <div className="action-buttons-row">
-        <button
-          type="button"
-          onClick={handleLevelUp}
-          disabled={!canLevelUp}
-          className="secondary-btn"
-          title="Custa 5 Pontos corporativos para subir 1 Nível (Máximo 5)"
-        >
-          <Star size={14} color="var(--accent-gold)" />
-          <span>Evoluir Nível (5 Pts)</span>
-        </button>
-
         {!activePlayer?.alliance ? (
           <button
             type="button"
             onClick={() => setShowAllianceCreator(!showAllianceCreator)}
             disabled={eligiblePartners.length === 0}
             className="secondary-btn"
+            style={{ width: '100%' }}
           >
             <Handshake size={14} color="var(--accent-purple)" />
-            <span>Firmar Aliança</span>
+            <span>Firmar Aliança Estratégica</span>
           </button>
         ) : (
           <button
             type="button"
             onClick={handleBreakAlliance}
             className="secondary-btn"
-            style={{ borderColor: 'rgba(244, 63, 94, 0.4)', color: 'var(--accent-rose)' }}
+            style={{ width: '100%', borderColor: 'rgba(244, 63, 94, 0.4)', color: 'var(--accent-rose)' }}
           >
             <HeartHandshake size={14} />
             <span>Romper Aliança</span>
