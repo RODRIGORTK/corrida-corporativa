@@ -5,23 +5,20 @@ import { Board } from './components/Board/Board';
 import { RankingBoard } from './components/Dashboard/RankingBoard';
 import { NarratorPanel } from './components/Narrator/NarratorPanel';
 import { GameModals } from './components/Modals/GameModals';
-import { Award, RotateCcw, Clock, Shield, PanelRightClose, PanelRightOpen, Flag } from 'lucide-react';
+// ATUALIZADO: Adicionei os ícones RefreshCw e LogOut
+import { Award, RotateCcw, Clock, Shield, PanelRightClose, PanelRightOpen, Flag, RefreshCw, LogOut } from 'lucide-react';
 
 const GameView: React.FC = () => {
+  // ATUALIZADO: Puxando as funções novas dos modais no lugar de restartGame
   const { 
     currentRound, 
     config, 
     activePlayer, 
-    restartGame 
+    requestShuffleBoard, 
+    requestQuitGame 
   } = useGame();
 
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
-
-  const handleConfirmRestart = () => {
-    if (window.confirm('Tem certeza que deseja reiniciar a partida e voltar ao Setup?')) {
-      restartGame();
-    }
-  };
 
   return (
     <div className="app-container">
@@ -45,7 +42,7 @@ const GameView: React.FC = () => {
             </span>
           </div>
 
-          {/* Ciclo de Rodadas (para carência judicial e alianças) */}
+          {/* Ciclo de Rodadas */}
           <div className="round-pill" style={{ color: 'var(--text-muted)' }} title="Contador de rodadas para recuperação judicial e duração de contratos">
             <Clock size={14} />
             <span>Rodada {currentRound}</span>
@@ -69,7 +66,7 @@ const GameView: React.FC = () => {
             <span>{config.boardSize} casas</span>
           </div>
 
-          {/* Botão de Alternância da Barra Lateral para Maximizar Visão */}
+          {/* Botão de Alternância da Barra Lateral */}
           <button
             type="button"
             onClick={() => setIsSidebarVisible(prev => !prev)}
@@ -83,27 +80,39 @@ const GameView: React.FC = () => {
             title={isSidebarVisible ? 'Ocultar barra lateral para maximizar visão do tabuleiro' : 'Exibir barra lateral com Ranking e Auditoria'}
           >
             {isSidebarVisible ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
-            <span>{isSidebarVisible ? 'Ocultar Painel Lateral' : 'Exibir Painel Lateral'}</span>
+            <span>{isSidebarVisible ? 'Ocultar Painel' : 'Exibir Painel'}</span>
           </button>
 
-          <button
-            type="button"
-            onClick={handleConfirmRestart}
-            className="secondary-btn"
-            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-            title="Reiniciar partida"
-          >
-            <RotateCcw size={14} /> Novo Jogo
-          </button>
+          {/* ATUALIZADO: Agrupamento vertical dos botões de controle de partida */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <button
+              type="button"
+              onClick={requestShuffleBoard}
+              className="secondary-btn"
+              style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+              title="Mudar a ordem das casas no tabuleiro"
+            >
+              <RefreshCw size={13} color="var(--primary)" /> Embaralhar
+            </button>
+
+            <button
+              type="button"
+              onClick={requestQuitGame}
+              className="secondary-btn"
+              style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', borderColor: 'rgba(244, 63, 94, 0.4)', color: 'var(--accent-rose)' }}
+              title="Encerrar partida e voltar ao Menu"
+            >
+              <LogOut size={13} /> Sair / Novo Jogo
+            </button>
+          </div>
+
         </div>
       </header>
 
       {/* Dashboard Principal */}
       <main className={`dashboard-layout ${!isSidebarVisible ? 'sidebar-hidden' : ''}`}>
-        {/* Tabuleiro Perimétrico com Console no Centro quando a barra estiver oculta */}
         <Board isSidebarHidden={!isSidebarVisible} />
 
-        {/* Barra Lateral Opcional */}
         {isSidebarVisible && (
           <aside className="right-sidebar">
             <NarratorPanel />

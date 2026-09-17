@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGame } from '../../context/GameContext';
-import { Dices, ArrowRight, Star, Handshake, ScrollText, HeartHandshake, DollarSign, Package, Users, Briefcase, Award } from 'lucide-react';
+import { Dices, ArrowRight, Star, ScrollText, DollarSign, Package, Users, Briefcase, Award } from 'lucide-react';
 
 export interface NarratorTurnConsoleProps {
   inCenter?: boolean;
@@ -11,16 +11,10 @@ export const NarratorTurnConsole: React.FC<NarratorTurnConsoleProps> = ({ inCent
     activePlayer, 
     phase, 
     rollDiceAndMove, 
-    createAlliance, 
-    breakAlliance, 
-    players,
     config
   } = useGame();
 
   const [diceInput, setDiceInput] = useState<number>(1);
-  const [alliancePartnerId, setAlliancePartnerId] = useState<string>('');
-  const [allianceDuration, setAllianceDuration] = useState<number>(3);
-  const [showAllianceCreator, setShowAllianceCreator] = useState<boolean>(false);
 
   const handleRoll = () => {
     if (diceInput < 1) return;
@@ -28,28 +22,11 @@ export const NarratorTurnConsole: React.FC<NarratorTurnConsoleProps> = ({ inCent
   };
 
   const handleQuickDice = (val: number) => {
+    // ATUALIZADO: Agora apenas atualiza o visor e NÃO anda automaticamente!
     setDiceInput(val);
   };
 
-  const handleCreateAlliance = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activePlayer || !alliancePartnerId) return;
-    createAlliance(activePlayer.id, alliancePartnerId, allianceDuration);
-    setShowAllianceCreator(false);
-    setAlliancePartnerId('');
-  };
-
-  const handleBreakAlliance = () => {
-    if (!activePlayer) return;
-    breakAlliance(activePlayer.id);
-  };
-
   const isMovingOrBusy = phase !== 'ROLL';
-
-  // Possíveis parceiros para aliança (não eliminados, não o próprio jogador, sem aliança ativa)
-  const eligiblePartners = players.filter(p => 
-    p.id !== activePlayer?.id && !p.isEliminated && !p.alliance
-  );
 
   // Retorna o título da empresa baseado no nível atual
   const getCompanyTitle = (level: number) => {
@@ -123,41 +100,34 @@ export const NarratorTurnConsole: React.FC<NarratorTurnConsoleProps> = ({ inCent
             color: 'var(--text-bright)',
             marginBottom: '0.6rem'
           }}>
-            {/* Saldo */}
             <div title="Saldo Financeiro" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <DollarSign size={14} color={activePlayer.color} />
               <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>
                 {activePlayer.balance >= 1000 ? `${(activePlayer.balance / 1000).toFixed(1)}k` : activePlayer.balance}
               </span>
             </div>
-            {/* Produtos */}
             <div title="Mercadorias / Estoque" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Package size={14} color={activePlayer.color} />
               <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{activePlayer.goods}</span>
             </div>
-            {/* Clientes */}
             <div title="Clientes" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Users size={14} color={activePlayer.color} />
               <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{activePlayer.clients}</span>
             </div>
-            {/* Funcionários */}
             <div title="Funcionários" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Briefcase size={14} color={activePlayer.color} />
               <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{activePlayer.employees}</span>
             </div>
-            {/* Pontos (XP) */}
             <div title="Pontos Corporativos (XP)" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Award size={14} color={activePlayer.color} />
               <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{activePlayer.points} pts</span>
             </div>
-            {/* Nível Automático */}
             <div title="Nível Corporativo" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Star size={14} color={activePlayer.color} />
               <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Nv. {activePlayer.level}</span>
             </div>
           </div>
 
-          {/* Badge de Título da Empresa */}
           <div style={{
             textAlign: 'center',
             fontSize: '0.75rem',
@@ -185,7 +155,6 @@ export const NarratorTurnConsole: React.FC<NarratorTurnConsoleProps> = ({ inCent
           onChange={e => setDiceInput(Math.max(1, parseInt(e.target.value) || 1))}
           disabled={isMovingOrBusy}
           className="dice-number-input"
-          title="Digite o resultado do dado físico rolado na mesa"
         />
         <button
           type="button"
@@ -198,7 +167,7 @@ export const NarratorTurnConsole: React.FC<NarratorTurnConsoleProps> = ({ inCent
         </button>
       </div>
 
-      {/* Atalhos Rápidos 1 a 6 */}
+      {/* Botões Rápidos (1 a 6) */}
       <div className="quick-dice-buttons">
         {[1, 2, 3, 4, 5, 6].map(num => (
           <button
@@ -207,83 +176,17 @@ export const NarratorTurnConsole: React.FC<NarratorTurnConsoleProps> = ({ inCent
             onClick={() => handleQuickDice(num)}
             disabled={isMovingOrBusy}
             className="quick-dice-btn"
+            style={{ 
+              // ATUALIZADO: Agora pinta de azul baseado no input atual, e não no peão andando!
+              backgroundColor: diceInput === num ? '#3b82f6' : '',
+              color: diceInput === num ? '#ffffff' : '',
+              borderColor: diceInput === num ? '#3b82f6' : ''
+            }}
           >
             {num}
           </button>
         ))}
       </div>
-
-      {/* Alianças (Ações do Jogador da Vez) */}
-      <div className="action-buttons-row">
-        {!activePlayer?.alliance ? (
-          <button
-            type="button"
-            onClick={() => setShowAllianceCreator(!showAllianceCreator)}
-            disabled={eligiblePartners.length === 0}
-            className="secondary-btn"
-            style={{ width: '100%' }}
-          >
-            <Handshake size={14} color="var(--accent-purple)" />
-            <span>Firmar Aliança Estratégica</span>
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleBreakAlliance}
-            className="secondary-btn"
-            style={{ width: '100%', borderColor: 'rgba(244, 63, 94, 0.4)', color: 'var(--accent-rose)' }}
-          >
-            <HeartHandshake size={14} />
-            <span>Romper Aliança</span>
-          </button>
-        )}
-      </div>
-
-      {/* Sub-painel: Criação de Aliança Corporativa */}
-      {showAllianceCreator && (
-        <form onSubmit={handleCreateAlliance} style={{ marginTop: '0.85rem', padding: '0.75rem', background: 'rgba(15, 23, 42, 0.95)', borderRadius: '8px', border: '1px solid var(--border-glow)' }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-purple)', display: 'block', marginBottom: '0.5rem' }}>
-            🤝 Proposta de Fusão Corporativa
-          </span>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <select
-              value={alliancePartnerId}
-              onChange={e => setAlliancePartnerId(e.target.value)}
-              className="text-input"
-              style={{ height: '36px', fontSize: '0.8rem' }}
-              required
-            >
-              <option value="">Selecione a empresa parceira...</option>
-              {eligiblePartners.map(p => (
-                <option key={p.id} value={p.id}>{p.name} (Nível {p.level})</option>
-              ))}
-            </select>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Duração (Rodadas):</label>
-              <input
-                type="number"
-                min={1}
-                max={10}
-                value={allianceDuration}
-                onChange={e => setAllianceDuration(parseInt(e.target.value) || 1)}
-                className="text-input"
-                style={{ width: '60px', height: '32px', textAlign: 'center' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.2rem' }}>
-              <button type="submit" className="btn-add" style={{ height: '32px', fontSize: '0.75rem', flex: 1 }}>
-                Celebrar Contrato
-              </button>
-              <button type="button" onClick={() => setShowAllianceCreator(false)} className="btn-neutral" style={{ padding: '0 0.5rem', height: '32px', fontSize: '0.75rem' }}>
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </form>
-      )}
     </div>
   );
 };
@@ -293,17 +196,14 @@ export const NarratorPanel: React.FC = () => {
 
   return (
     <div>
-      {/* Console Principal do Narrador na Barra Lateral */}
       <div className="sidebar-section">
         <div className="section-title">
           <Dices size={16} color="var(--primary)" />
           <span>Console do Narrador (Ação de Turno)</span>
         </div>
-
         <NarratorTurnConsole />
       </div>
 
-      {/* Feed de Eventos e Auditoria Corporativa */}
       <div className="sidebar-section">
         <div className="section-title">
           <ScrollText size={16} color="var(--text-muted)" />
@@ -313,7 +213,7 @@ export const NarratorPanel: React.FC = () => {
         <div className="logs-stream">
           {logs.length === 0 ? (
             <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textAlign: 'center', padding: '1rem 0' }}>
-              Nenhuma movimentação registrada ainda.
+              Nenhuma movimentação registrada.
             </div>
           ) : (
             logs.map(log => (

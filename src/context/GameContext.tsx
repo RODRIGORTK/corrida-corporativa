@@ -1,70 +1,33 @@
-import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import type { 
-  BoardSize, 
-  ChallengeCard, 
-  GameConfig, 
-  GameLog, 
-  GamePhase, 
-  Player, 
-  Tile 
-} from '../types/game';
+import type { BoardSize, ChallengeCard, GameConfig, GameLog, GamePhase, Player, Tile } from '../types/game';
 import { generateBoardTiles, shuffleBoardRules } from '../utils/boardGenerator';
 import { CHALLENGE_CARDS, getCompanyLevelInfo } from '../data/challenges';
 
-// Cores premium para peões corporativos
-export const PLAYER_PALETTE = [
-  '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#f97316', '#ef4444', 
-  '#14b8a6', '#84cc16', '#6366f1', '#d946ef', '#eab308', '#22c55e', '#0284c7', '#a855f7', 
-  '#f43f5e', '#e11d48', '#0d9488', '#7c3aed',
-];
+export const PLAYER_PALETTE = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#f97316', '#ef4444', '#14b8a6', '#84cc16'];
+
+const RES_LABELS: any = { balance: 'R$', goods: 'Mercadorias', clients: 'Clientes', employees: 'Funcionários', points: 'Pontos' };
 
 interface GameContextType {
-  players: Player[];
-  ranking: Player[];
-  activePlayer: Player | null;
-  activePlayerIndex: number;
-  currentRound: number;
-  tiles: Tile[];
-  config: GameConfig;
-  phase: GamePhase;
-  logs: GameLog[];
-  activeModal: {
-    type: 'TILE_INFO' | 'CHALLENGE' | 'CRISIS' | 'INVESTMENT' | 'ALLIANCE' | 'INSPECT_TILE' | 'FINAL_BOARDROOM' | 'GAME_OVER' | null;
-    tile?: Tile;
-    card?: ChallengeCard;
-    tilePlayers?: Player[];
-  };
-  winner: Player | null;
-  movingPlayerId: string | null;
-
-  // Ações de jogo
+  players: Player[]; ranking: Player[]; activePlayer: Player | null; activePlayerIndex: number; currentRound: number;
+  tiles: Tile[]; config: GameConfig; phase: GamePhase; logs: GameLog[];
+  activeModal: { type: 'TILE_INFO' | 'CHALLENGE' | 'CRISIS' | 'INVESTMENT' | 'ALLIANCE' | 'NEGOTIATION' | 'INSPECT_TILE' | 'FINAL_BOARDROOM' | 'OPPORTUNITY' | 'QUEIMA' | 'GAME_OVER' | 'CONFIRM_SHUFFLE' | 'CONFIRM_QUIT' | null; tile?: Tile; card?: ChallengeCard; tilePlayers?: Player[]; };
+  winner: Player | null; movingPlayerId: string | null; selectedDice: number | null;
+  notification: { id: string; message: string; type: string } | null;
   setupGame: (playerNames: string[], boardSize: BoardSize, lapLimit: number | null) => void;
   rollDiceAndMove: (diceValue: number) => Promise<void>;
-  closeModal: () => void;
-  openTileInspectModal: (tileIndex: number) => void;
-  
-  // Resolução de ações
-  resolveChallenge: (approved: boolean) => void;
-  resolveCrisis: (cancelWithPoints: boolean) => void;
-  resolveInvestment: (invest: boolean) => void;
-  resolveFinalBoardroom: (approved: boolean) => void;
-  
-  // Progressão e alianças
-  createAlliance: (playerAId: string, playerBId: string, durationRounds: number) => void;
-  breakAlliance: (playerId: string) => void;
-  restartGame: () => void;
-  endGameByLimit: () => void;
+  closeModal: () => void; openTileInspectModal: (tileIndex: number) => void;
+  resolveChallenge: (approved: boolean) => void; resolveCrisis: (cancelWithPoints: boolean) => void;
+  resolveInvestment: (invest: boolean) => void; resolveFinalBoardroom: (approved: boolean) => void;
+  resolveNegotiation: (trade: any | null) => void; resolveAllianceModal: (partnerId: string | null, duration?: number) => void;
+  resolveOpportunity: (accept: boolean) => void; resolveQueima: (goodsSold: number, amountReceived: number) => void; restartGame: () => void;
+  requestShuffleBoard: () => void; requestQuitGame: () => void; confirmShuffleBoard: () => void; confirmQuitGame: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [config, setConfig] = useState<GameConfig>({
-    boardSize: 30,
-    lapLimit: 3
-  });
-  // O tabuleiro é gerado e misturado apenas uma vez na inicialização ou no Setup!
+  const [config, setConfig] = useState<GameConfig>({ boardSize: 30, lapLimit: 3 });
   const [tiles, setTiles] = useState<Tile[]>(() => shuffleBoardRules(generateBoardTiles(30)));
   const [players, setPlayers] = useState<Player[]>([]);
   const [activePlayerIndex, setActivePlayerIndex] = useState<number>(0);
@@ -73,447 +36,438 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [logs, setLogs] = useState<GameLog[]>([]);
   const [winner, setWinner] = useState<Player | null>(null);
   const [movingPlayerId, setMovingPlayerId] = useState<string | null>(null);
+  const [selectedDice, setSelectedDice] = useState<number | null>(null);
+  const [activeModal, setActiveModal] = useState<GameContextType['activeModal']>({ type: null });
+  const [notification, setNotification] = useState<GameContextType['notification']>(null);
 
-  const [activeModal, setActiveModal] = useState<GameContextType['activeModal']>({
-    type: null
-  });
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 4800);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   const addLog = useCallback((message: string, type: GameLog['type'] = 'info') => {
-    const newLog: GameLog = {
-      id: Math.random().toString(36).substring(2, 9),
-      round: currentRound,
-      timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      message,
-      type
-    };
-    setLogs(prev => [newLog, ...prev.slice(0, 49)]);
+    if (!message) return;
+    const id = Math.random().toString(36).substring(2, 9);
+    setLogs(prev => [{ id, round: currentRound, timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }), message, type }, ...prev.slice(0, 49)]);
+
+    const isMovement = message.includes('andou') || message.includes('parou na casa') || message.includes('Nova rodada');
+    if (!isMovement) {
+      setNotification({ id, message, type });
+    }
   }, [currentRound]);
 
-  // Ranking em Tempo Real
   const ranking = useMemo(() => {
     return [...players].sort((a, b) => {
-      if (a.isEliminated && !b.isEliminated) return 1;
-      if (!a.isEliminated && b.isEliminated) return -1;
+      if (a.isEliminated && !b.isEliminated) return 1; if (!a.isEliminated && b.isEliminated) return -1;
+      if (a.hasWon && !b.hasWon) return -1; if (!a.hasWon && b.hasWon) return 1;
       if (b.lapsCompleted !== a.lapsCompleted) return b.lapsCompleted - a.lapsCompleted;
       if (b.balance !== a.balance) return b.balance - a.balance;
-      if (b.goods !== a.goods) return b.goods - a.goods;
-      if (b.employees !== a.employees) return b.employees - a.employees;
-      if (b.points !== a.points) return b.points - a.points;
-      return b.clients - a.clients;
+      return b.points - a.points;
     });
   }, [players]);
 
-  const activePlayer = useMemo(() => {
-    if (players.length === 0) return null;
-    return players[activePlayerIndex] || null;
-  }, [players, activePlayerIndex]);
+  const activePlayer = useMemo(() => players[activePlayerIndex] || null, [players, activePlayerIndex]);
 
-  // Inicialização da Partida
+  useEffect(() => {
+    if (phase === 'SETUP' || phase === 'GAME_OVER' || players.length === 0) return;
+    const stillPlaying = players.filter(p => !p.isEliminated && !p.hasWon);
+    if (players.length > 1 ? stillPlaying.length <= 1 : stillPlaying.length === 0) {
+      setPhase('GAME_OVER'); setWinner(ranking[0]); setActiveModal({ type: null });
+      addLog(`🏁 CORRIDA ENCERRADA! Fim de jogo!`, 'victory');
+      setTimeout(() => confetti({ particleCount: 400, spread: 150 }), 100);
+    }
+  }, [players, phase, ranking, addLog]);
+
   const setupGame = useCallback((playerNames: string[], boardSize: BoardSize, lapLimit: number | null) => {
     const baseTiles = generateBoardTiles(boardSize);
     const newTiles = shuffleBoardRules(baseTiles);
-    
+    const initialPoints = 5;
+    const initialLevel = getCompanyLevelInfo(initialPoints).level;
+
     const newPlayers: Player[] = playerNames.map((name, idx) => ({
-      id: `p-${idx + 1}-${Math.random().toString(36).substring(2, 6)}`,
-      name: name.trim(),
-      color: PLAYER_PALETTE[idx % PLAYER_PALETTE.length],
-      position: 0,
-      lapsCompleted: 0,
-      balance: 10000,
-      employees: 2,
-      clients: 3,
-      goods: 5,
-      points: 0,
-      level: 1, // Começa sempre no Nível 1 (Microempresa)
-      bankruptcy: {
-        inRecovery: false,
-        roundsLeft: 2
-      },
-      alliance: null,
-      isEliminated: false,
-      hasWon: false
+      id: `p-${idx + 1}-${Math.random().toString(36).substring(2, 6)}`, name: name.trim(), color: PLAYER_PALETTE[idx % PLAYER_PALETTE.length],
+      position: 0, lapsCompleted: 0, 
+      balance: 20000, employees: 10, clients: 10, goods: 10, points: initialPoints, level: initialLevel,
+      bankruptcy: { inRecovery: false, roundsLeft: 2 }, alliance: null, isEliminated: false, hasWon: false,
+      hasActiveInvestment: false
     }));
+    setConfig({ boardSize, lapLimit }); setTiles(newTiles); setPlayers(newPlayers); setActivePlayerIndex(0);
+    setCurrentRound(1); setPhase('ROLL'); setLogs([]); setWinner(null); setActiveModal({ type: null }); setNotification(null);
+  }, []);
 
-    setConfig({ boardSize, lapLimit });
-    setTiles(newTiles);
-    setPlayers(newPlayers);
-    setActivePlayerIndex(0);
-    setCurrentRound(1);
-    setPhase('ROLL');
-    setLogs([]);
-    setWinner(null);
-    setActiveModal({ type: null });
+  const applyResourceChange = useCallback((playerId: string, delta: any, actionDescription: string) => {
+    const target = players.find(p => p.id === playerId);
+    if (target) {
+      const partner = target.alliance ? players.find(p => p.id === target.alliance?.partnerId && !p.isEliminated) : null;
+      const divisor = partner ? 2 : 1;
+      
+      let penalty = 0;
+      if (delta.goods) {
+        const dG = Math.round(delta.goods / divisor);
+        if (target.goods + dG < 0) {
+          penalty = -(Math.abs(target.goods + dG) * 1000); 
+        }
+      }
+      
+      const predictedBalance = target.balance + (delta.balance ? Math.round(delta.balance / divisor) : 0) + penalty;
+      
+      if (predictedBalance <= 0 && !target.bankruptcy.inRecovery) {
+        setTimeout(() => addLog(`🚨 ALERTA VERMELHO: ${target.name} negativou o caixa e entrou em Recuperação Judicial!`, 'crisis'), 150);
+      } else if (predictedBalance > 0 && target.bankruptcy.inRecovery) {
+        setTimeout(() => addLog(`🟢 ALÍVIO: ${target.name} pagou as dívidas e saiu da Recuperação Judicial!`, 'gain'), 150);
+      }
+    }
 
-    addLog(`Partida corporativa iniciada com ${newPlayers.length} executivos. Tabuleiro de ${boardSize} casas. Meta: ${lapLimit ? `${lapLimit} voltas completas` : 'Livre / Sem limite'}.`, 'info');
-  }, [addLog]);
-
-  // Aplicação de recursos com Nível Automático
-  const applyResourceChange = useCallback((
-    playerId: string,
-    delta: { balance?: number; employees?: number; clients?: number; goods?: number; points?: number; },
-    actionDescription: string
-  ) => {
     setPlayers(prevPlayers => {
-      const target = prevPlayers.find(p => p.id === playerId);
-      if (!target) return prevPlayers;
-
-      const partner = target.alliance 
-        ? prevPlayers.find(p => p.id === target.alliance?.partnerId && !p.isEliminated)
-        : null;
+      const currentTarget = prevPlayers.find(p => p.id === playerId);
+      if (!currentTarget) return prevPlayers;
+      const currentPartner = currentTarget.alliance ? prevPlayers.find(p => p.id === currentTarget.alliance?.partnerId && !p.isEliminated) : null;
 
       return prevPlayers.map(p => {
-        let isTarget = p.id === playerId;
-        let isPartner = partner && p.id === partner.id;
-
+        let isTarget = p.id === playerId; let isPartner = currentPartner && p.id === currentPartner.id;
         if (!isTarget && !isPartner) return p;
 
-        const divisor = partner ? 2 : 1;
+        const divisor = currentPartner ? 2 : 1;
+        let newGoods = p.goods;
+        let penaltyForMissingGoods = 0;
 
-        const deltaBal = delta.balance ? Math.round(delta.balance / divisor) : 0;
-        const deltaEmp = delta.employees ? Math.round(delta.employees / divisor) : 0;
-        const deltaCli = delta.clients ? Math.round(delta.clients / divisor) : 0;
-        const deltaGood = delta.goods ? Math.round(delta.goods / divisor) : 0;
-        const deltaPts = delta.points ? Math.round(delta.points / divisor) : 0;
+        if (delta.goods) {
+          const deltaG = Math.round(delta.goods / divisor);
+          if (deltaG < 0) {
+            if (p.goods + deltaG < 0) {
+              const missingAmount = Math.abs(p.goods + deltaG);
+              newGoods = 0;
+              penaltyForMissingGoods = -(missingAmount * 1000);
+            } else {
+              newGoods = p.goods + deltaG;
+            }
+          } else {
+            newGoods = p.goods + deltaG;
+          }
+        }
 
-        const newBalance = p.balance + deltaBal;
-        const newEmployees = Math.max(0, p.employees + deltaEmp);
-        const newClients = Math.max(0, p.clients + deltaCli);
-        const newGoods = Math.max(0, p.goods + deltaGood);
-        const newPoints = Math.max(0, p.points + deltaPts);
-
-        // --- SISTEMA DE NÍVEL AUTOMÁTICO DE XP ---
+        const newBalance = p.balance + (delta.balance ? Math.round(delta.balance / divisor) : 0) + penaltyForMissingGoods;
+        const newEmployees = Math.max(0, p.employees + (delta.employees ? Math.round(delta.employees / divisor) : 0));
+        const newClients = Math.max(0, p.clients + (delta.clients ? Math.round(delta.clients / divisor) : 0));
+        const newPoints = Math.max(0, p.points + (delta.points ? Math.round(delta.points / divisor) : 0));
+        
+        const newHasInv = (delta.hasActiveInvestment !== undefined && isTarget) ? delta.hasActiveInvestment : p.hasActiveInvestment;
         const newLevelInfo = getCompanyLevelInfo(newPoints);
         
-        if (newLevelInfo.level > p.level && isTarget) { // Notifica apenas para o alvo principal para não flodar o log
-          addLog(`📈 CRESCIMENTO EXECUTIVO: Com ${newPoints} pontos, ${p.name} evoluiu e agora é uma ${newLevelInfo.title} (Nível ${newLevelInfo.level})!`, 'gain');
-          confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
-        } else if (newLevelInfo.level < p.level && isTarget) {
-          addLog(`📉 QUEDA DE MERCADO: ${p.name} perdeu influência e foi rebaixado(a) para ${newLevelInfo.title} (Nível ${newLevelInfo.level}).`, 'loss');
-        }
-
-        // Checagem de Recuperação Judicial
+        // CORREÇÃO: Aplica "_isNew" para garantir que ele terá 2 turnos inteiros
         let updatedBankruptcy = { ...p.bankruptcy };
-        if (newBalance <= 0) {
-          if (!updatedBankruptcy.inRecovery) {
-            updatedBankruptcy = { inRecovery: true, roundsLeft: 2 };
-            addLog(`⚠️ ATENÇÃO: ${p.name} entrou em RECUPERAÇÃO JUDICIAL! Saldo negativo ou nulo.`, 'crisis');
-          }
-        } else {
-          if (updatedBankruptcy.inRecovery) {
-            updatedBankruptcy = { inRecovery: false, roundsLeft: 2 };
-            addLog(`✅ ${p.name} recuperou o fluxo de caixa e saiu da Recuperação Judicial!`, 'gain');
-          }
+        
+        if (newBalance <= 0 && !updatedBankruptcy.inRecovery) { 
+          updatedBankruptcy = { inRecovery: true, roundsLeft: 2, _isNew: true } as any; 
+        }
+        else if (newBalance > 0 && updatedBankruptcy.inRecovery) { 
+          updatedBankruptcy = { inRecovery: false, roundsLeft: 2 }; 
         }
 
-        return {
-          ...p,
-          balance: newBalance,
-          employees: newEmployees,
-          clients: newClients,
-          goods: newGoods,
-          points: newPoints,
-          level: newLevelInfo.level, // Salva o nível calculado!
-          bankruptcy: updatedBankruptcy
-        };
+        return { ...p, balance: newBalance, employees: newEmployees, clients: newClients, goods: newGoods, points: newPoints, level: newLevelInfo.level, bankruptcy: updatedBankruptcy, hasActiveInvestment: newHasInv };
       });
     });
+    
+    if (actionDescription) addLog(actionDescription, delta.balance && delta.balance < 0 ? 'loss' : 'gain');
+  }, [addLog, players]);
 
-    addLog(actionDescription, delta.balance && delta.balance < 0 ? 'loss' : 'gain');
-  }, [addLog]);
-
-  // Avançar Turno do Jogador
   const advanceTurn = useCallback(() => {
     setActiveModal({ type: null });
 
     setPlayers(prevPlayers => {
-      const activeSurvivors = prevPlayers.filter(p => !p.isEliminated);
-      if (activeSurvivors.length === 1 && prevPlayers.length > 1) {
-        setWinner(activeSurvivors[0]);
-        setPhase('GAME_OVER');
-        confetti({ particleCount: 150, spread: 80 });
-        return prevPlayers;
-      }
-      return prevPlayers;
-    });
+      let updatedPlayers = [...prevPlayers];
+      const currPlayer = updatedPlayers[activePlayerIndex];
+      let isEliminatedNow = false;
 
-    setActivePlayerIndex(prevIdx => {
-      let nextIdx = (prevIdx + 1) % players.length;
-      let loops = 0;
-
-      if (nextIdx === 0) {
-        addLog(`🎲 Nova rodada corporativa iniciada!`, 'info');
-
-        setCurrentRound(prevRound => {
-          const nextRound = prevRound + 1;
-          setPlayers(curr => curr.map(p => {
-            if (!p.alliance) return p;
-            const newRounds = p.alliance.roundsLeft - 1;
-            if (newRounds <= 0) {
-              addLog(`A aliança corporativa de ${p.name} expirou após o término do prazo contratual.`, 'info');
-              return { ...p, alliance: null };
-            }
-            return { ...p, alliance: { ...p.alliance, roundsLeft: newRounds } };
-          }));
-          return nextRound;
-        });
-      }
-
-      while (players[nextIdx]?.isEliminated && loops < players.length) {
-        nextIdx = (nextIdx + 1) % players.length;
-        loops++;
-      }
-
-      const nextPlayer = players[nextIdx];
-      if (nextPlayer && nextPlayer.bankruptcy.inRecovery) {
-        if (nextPlayer.bankruptcy.roundsLeft <= 1 && nextPlayer.balance <= 0) {
-          setPlayers(curr => curr.map(p => 
-            p.id === nextPlayer.id ? { ...p, isEliminated: true } : p
-          ));
-          addLog(`💀 FALÊNCIA CORPORATIVA: ${nextPlayer.name} esgotou as 2 rodadas em Recuperação Judicial sem recompor caixa e foi ELIMINADO(A)!`, 'crisis');
+      // CORREÇÃO: Lê a tag _isNew para ignorar o relógio no turno exato em que ele entrou em falência
+      if (currPlayer && currPlayer.bankruptcy.inRecovery && !currPlayer.isEliminated) {
+        const bank = currPlayer.bankruptcy as any;
+        
+        if (bank._isNew) {
+          updatedPlayers[activePlayerIndex] = { ...currPlayer, bankruptcy: { inRecovery: true, roundsLeft: bank.roundsLeft } };
         } else {
-          setPlayers(curr => curr.map(p => 
-            p.id === nextPlayer.id 
-              ? { ...p, bankruptcy: { ...p.bankruptcy, roundsLeft: p.bankruptcy.roundsLeft - 1 } }
-              : p
-          ));
-          addLog(`⏳ ${nextPlayer.name} segue em Recuperação Judicial! Restam ${nextPlayer.bankruptcy.roundsLeft - 1} rodada(s) para regularizar o saldo.`, 'crisis');
+          const newRounds = bank.roundsLeft - 1;
+          if (newRounds <= 0 && currPlayer.balance <= 0) {
+            isEliminatedNow = true;
+            updatedPlayers[activePlayerIndex] = { ...currPlayer, isEliminated: true, bankruptcy: { inRecovery: true, roundsLeft: 0 } };
+          } else {
+            updatedPlayers[activePlayerIndex] = { ...currPlayer, bankruptcy: { inRecovery: true, roundsLeft: newRounds } };
+          }
         }
       }
 
-      setPhase('ROLL');
-      return nextIdx;
+      let nextIdx = (activePlayerIndex + 1) % updatedPlayers.length;
+      let loops = 0;
+      let roundAdvanced = false;
+
+      if (nextIdx === 0) roundAdvanced = true;
+      
+      while ((updatedPlayers[nextIdx]?.isEliminated || updatedPlayers[nextIdx]?.hasWon) && loops < updatedPlayers.length) {
+        nextIdx = (nextIdx + 1) % updatedPlayers.length;
+        loops++;
+        if (nextIdx === 0) roundAdvanced = true;
+      }
+
+      if (roundAdvanced) {
+        updatedPlayers = updatedPlayers.map(p => {
+          if (!p.alliance) return p;
+          const ar = p.alliance.roundsLeft - 1;
+          return ar <= 0 ? { ...p, alliance: null } : { ...p, alliance: { ...p.alliance, roundsLeft: ar } };
+        });
+      }
+
+      const updatedCurrPlayer = updatedPlayers[activePlayerIndex];
+
+      setTimeout(() => {
+        if (isEliminatedNow) {
+          addLog(`💀 FALÊNCIA: A empresa de ${currPlayer?.name} não se recuperou e FOI ELIMINADA!`, 'loss');
+        } else if (updatedCurrPlayer && updatedCurrPlayer.bankruptcy.inRecovery && !updatedCurrPlayer.isEliminated) {
+          // Só avisa a contagem se não for o turno que ele acabou de negativar
+          if (!(currPlayer?.bankruptcy as any)?._isNew) {
+            addLog(`⚠️ CONTAGEM REGRESSIVA: ${updatedCurrPlayer.name} tem apenas ${updatedCurrPlayer.bankruptcy.roundsLeft} rodada(s) para sair do vermelho!`, 'crisis');
+          }
+        }
+        if (roundAdvanced) {
+          addLog(`🎲 Nova rodada iniciada!`, 'info');
+          setCurrentRound(r => r + 1);
+        }
+        setActivePlayerIndex(nextIdx);
+        setPhase('ROLL');
+      }, 0);
+
+      return updatedPlayers;
     });
-  }, [players, addLog]);
+  }, [activePlayerIndex, addLog]);
 
-  // Fim de jogo por atingimento da meta de voltas
-  const endGameByLimit = useCallback(() => {
-    setPhase('GAME_OVER');
-    const leader = ranking[0];
-    if (leader) {
-      setWinner(leader);
-      addLog(`🏆 FIM DE JOGO! A meta de voltas completas foi atingida. ${leader.name} venceu pelo Ranking Corporativo!`, 'victory');
-      confetti({ particleCount: 200, spread: 100 });
-    }
-  }, [ranking, addLog]);
-
-  // Rolar Dado Físico e Mover Peão
   const rollDiceAndMove = useCallback(async (diceValue: number) => {
     if (!activePlayer || phase !== 'ROLL') return;
-
-    setPhase('MOVING');
-    setMovingPlayerId(activePlayer.id);
-    addLog(`🎲 ${activePlayer.name} rolou o dado: ${diceValue}.`, 'info');
+    
+    setSelectedDice(diceValue);
+    setPhase('MOVING'); setMovingPlayerId(activePlayer.id);
+    addLog(`🎲 ${activePlayer.name} andou ${diceValue} casas.`, 'info');
 
     const boardLength = tiles.length;
     let currentPos = activePlayer.position;
-    let lapsGained = 0;
+    let newBoard = [...tiles];
 
     for (let step = 1; step <= diceValue; step++) {
       await new Promise(resolve => setTimeout(resolve, 320));
       currentPos = (currentPos + 1) % boardLength;
 
       if (currentPos === 0) {
-        lapsGained += 1;
-        applyResourceChange(
-          activePlayer.id, 
-          { balance: 30000, points: 5 }, 
-          `🏁 ${activePlayer.name} completou uma volta inteira! Ganhou +R$ 30.000 e +5 Pontos.`
-        );
+        applyResourceChange(activePlayer.id, { balance: 30000, points: 8 }, `🏁 VOLTA COMPLETA: ${activePlayer.name} ganhou +R$ 30.000 e +8 Pontos!`);
+        newBoard = shuffleBoardRules(newBoard);
+        setTiles(newBoard);
+        addLog(`🔄 O Tabuleiro corporativo foi re-embaralhado!`, 'alliance');
+        setPlayers(prev => prev.map(p => p.id === activePlayer.id ? { ...p, position: 0, lastDiceRoll: diceValue, lapsCompleted: p.lapsCompleted + 1 } : p));
+        break; 
+      } else {
+        setPlayers(prev => prev.map(p => p.id === activePlayer.id ? { ...p, position: currentPos, lastDiceRoll: diceValue } : p));
       }
-
-      setPlayers(prev => prev.map(p => 
-        p.id === activePlayer.id ? { 
-          ...p, 
-          position: currentPos, 
-          lastDiceRoll: diceValue,
-          lapsCompleted: p.lapsCompleted + (currentPos === 0 ? 1 : 0)
-        } : p
-      ));
     }
 
-    setMovingPlayerId(null);
+    setMovingPlayerId(null); setPhase('TILE_ACTION');
+    let landingTile = newBoard[currentPos];
 
-    const totalLaps = activePlayer.lapsCompleted + lapsGained;
-    if (config.lapLimit && totalLaps >= config.lapLimit) {
-      endGameByLimit();
+    if (landingTile.type === 'Auditoria') {
+      const resTypes = ['balance', 'goods', 'clients', 'employees'];
+      const chosen = resTypes[Math.floor(Math.random() * resTypes.length)];
+      const currentVal = activePlayer[chosen as keyof Player] as number;
+      const amountLost = Math.ceil(currentVal * 0.3);
+      const dynamicTile = { ...landingTile, effects: [{ type: chosen, amount: -amountLost }] };
+      setActiveModal({ type: 'CRISIS', tile: dynamicTile });
       return;
     }
-
-    setPhase('TILE_ACTION');
-
-    const landingTile = tiles[currentPos];
-    addLog(`${activePlayer.name} parou na casa [${landingTile.index}]: ${landingTile.title}`, 'info');
 
     if (landingTile.type === 'DiretoriaFinal') {
-      setActiveModal({ type: 'FINAL_BOARDROOM', tile: landingTile });
-      return;
+      const isFinalLap = config.lapLimit ? activePlayer.lapsCompleted >= (config.lapLimit - 1) : false;
+      if (!isFinalLap) {
+        await new Promise(resolve => setTimeout(resolve, 400));
+        currentPos = 0; landingTile = newBoard[0];
+        applyResourceChange(activePlayer.id, { balance: 30000, points: 8 }, `🚀 BARRADO NA DIRETORIA: ${activePlayer.name} recuou pro início e recebeu +R$ 30.000 e +8 Pontos.`);
+        newBoard = shuffleBoardRules(newBoard); setTiles(newBoard);
+        setPlayers(prev => prev.map(p => p.id === activePlayer.id ? { ...p, position: 0, lapsCompleted: p.lapsCompleted + 1 } : p));
+        setSelectedDice(null); setActiveModal({ type: 'TILE_INFO', tile: landingTile });
+        return;
+      } else {
+        setSelectedDice(null); setActiveModal({ type: 'FINAL_BOARDROOM', tile: landingTile }); return;
+      }
+    } else if (landingTile.type === 'Desastre') {
+      if (activePlayer.hasActiveInvestment) {
+        applyResourceChange(activePlayer.id, { hasActiveInvestment: false }, `🌋 SOBREVIVEU: ${activePlayer.name} queimou seu Investimento Ativo para não sofrer o Desastre!`);
+        setSelectedDice(null); setActiveModal({ type: 'TILE_INFO', tile: landingTile }); return;
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 400));
+        currentPos = (currentPos - 1 + boardLength) % boardLength; landingTile = newBoard[currentPos];
+        setPlayers(prev => prev.map(p => p.id === activePlayer.id ? { ...p, position: currentPos } : p));
+        addLog(`🌋 DESASTRE: ${activePlayer.name} foi forçado a recuar 1 casa.`, 'crisis');
+      }
     }
 
-    if (landingTile.type === 'Desafio') {
-      const matchingSector = CHALLENGE_CARDS.filter(c => c.sector === landingTile.sector);
-      const pool = matchingSector.length > 0 ? matchingSector : CHALLENGE_CARDS;
-      const card = pool[Math.floor(Math.random() * pool.length)];
+    addLog(`${activePlayer.name} parou na casa [${landingTile.index}]: ${landingTile.title}`, 'info');
+    setSelectedDice(null);
 
-      setActiveModal({ type: 'CHALLENGE', tile: landingTile, card });
-      return;
+    if (landingTile.type === 'Crescimento') {
+      let change: any = {}; 
+      let descParts = landingTile.effects?.map((e: any) => {
+        change[e.type] = e.amount;
+        return `+${e.type === 'balance' ? `R$ ${e.amount.toLocaleString('pt-BR')}` : `${e.amount} ${RES_LABELS[e.type]}`}`;
+      }) || [];
+      applyResourceChange(activePlayer.id, change, `🚀 CRESCIMENTO: ${activePlayer.name} ganhou ${descParts.join(' e ')}!`);
+      setActiveModal({ type: 'TILE_INFO', tile: landingTile }); return;
     }
-
-    if (landingTile.type === 'Crise') {
-      setActiveModal({ type: 'CRISIS', tile: landingTile });
-      return;
-    }
-
-    if (landingTile.type === 'Investimento') {
-      setActiveModal({ type: 'INVESTMENT', tile: landingTile });
-      return;
-    }
-
-    if (landingTile.type === 'Oportunidade') {
-      applyResourceChange(
-        activePlayer.id,
-        { balance: 20000, clients: 1 },
-        `✨ ${activePlayer.name} aproveitou a Oportunidade: +R$ 20.000 e +1 Cliente!`
-      );
-      setActiveModal({ type: 'TILE_INFO', tile: landingTile });
-      return;
-    }
+    
+    if (landingTile.type === 'Queima') { setActiveModal({ type: 'QUEIMA', tile: landingTile }); return; }
+    if (landingTile.type === 'Oportunidade') { setActiveModal({ type: 'OPPORTUNITY', tile: landingTile }); return; }
+    if (landingTile.type === 'Prejuizo') { setActiveModal({ type: 'CRISIS', tile: landingTile }); return; }
+    if (landingTile.type === 'Investimento') { setActiveModal({ type: 'INVESTMENT', tile: landingTile }); return; }
+    if (landingTile.type === 'Negociação') { setActiveModal({ type: 'NEGOTIATION', tile: landingTile }); return; }
+    if (landingTile.type === 'Alianca') { setActiveModal({ type: 'ALLIANCE', tile: landingTile }); return; }
+    if (landingTile.type === 'Desafio') { setActiveModal({ type: 'CHALLENGE', tile: landingTile, card: CHALLENGE_CARDS[0] }); return; }
 
     setActiveModal({ type: 'TILE_INFO', tile: landingTile });
-  }, [activePlayer, phase, tiles, addLog, applyResourceChange, config.lapLimit, endGameByLimit]);
+  }, [activePlayer, phase, tiles, addLog, applyResourceChange, config.lapLimit]);
 
-  const resolveChallenge = useCallback((approved: boolean) => {
-    if (!activePlayer || !activeModal.card) return;
-    const card = activeModal.card;
-
-    if (approved) {
-      applyResourceChange(
-        activePlayer.id,
-        card.approvalReward,
-        `🏆 NARRADOR APROVOU: ${activePlayer.name} superou o desafio! Recompensa concedida.`
-      );
-      confetti({ particleCount: 60, spread: 50 });
-    } else {
-      applyResourceChange(
-        activePlayer.id,
-        card.rejectionPenalty,
-        `❌ NARRADOR RECUSOU: ${activePlayer.name} falhou no desafio. Penalidade aplicada.`
-      );
-    }
-    advanceTurn();
-  }, [activePlayer, activeModal.card, applyResourceChange, advanceTurn]);
-
-  const resolveCrisis = useCallback((cancelWithPoints: boolean) => {
-    if (!activePlayer) return;
-    if (cancelWithPoints) {
-      if (activePlayer.points >= 5) {
-        applyResourceChange(activePlayer.id, { points: -5 }, `🛡️ PODER CORPORATIVO: ${activePlayer.name} gastou 5 Pontos para ANULAR a crise!`);
-      } else {
-        applyResourceChange(activePlayer.id, { balance: -15000 }, `💥 ${activePlayer.name} tentou anular sem pontos e sofreu a crise: -R$ 15.000`);
-      }
-    } else {
-      applyResourceChange(activePlayer.id, { balance: -15000 }, `💥 ${activePlayer.name} absorveu a crise corporativa: -R$ 15.000`);
-    }
-    advanceTurn();
-  }, [activePlayer, applyResourceChange, advanceTurn]);
-
-  const resolveInvestment = useCallback((invest: boolean) => {
-    if (!activePlayer) return;
-
-    if (invest) {
-      let effectiveLevel = activePlayer.level;
-      if (activePlayer.alliance) effectiveLevel += 1;
-
-      const reqLevel = activeModal.tile?.requiredLevel || 1;
-      if (effectiveLevel >= reqLevel) {
-        applyResourceChange(
-          activePlayer.id,
-          { balance: -30000, goods: 3, points: 2 },
-          `📈 INVESTIMENTO: ${activePlayer.name} investiu R$ 30.000 e obteve +3 Mercadorias e +2 Pontos!`
-        );
-      } else {
-        addLog(`⚠️ Investimento cancelado: Requer Nível ${reqLevel} (Nível disponível: ${effectiveLevel}).`, 'info');
-      }
+  const resolveOpportunity = useCallback((accept: boolean) => {
+    if (!activePlayer || !activeModal.tile?.trade) return;
+    if (accept) {
+      const trade = activeModal.tile.trade as any;
+      if (activePlayer[trade.giveType as keyof Player] >= trade.giveAmount) {
+        const giveFmt = trade.giveType === 'balance' ? `R$ ${trade.giveAmount.toLocaleString('pt-BR')}` : `${trade.giveAmount} ${RES_LABELS[trade.giveType]}`;
+        const recFmt = trade.receiveType === 'balance' ? `R$ ${trade.receiveAmount.toLocaleString('pt-BR')}` : `${trade.receiveAmount} ${RES_LABELS[trade.receiveType]}`;
+        applyResourceChange(activePlayer.id, { [trade.giveType]: -trade.giveAmount, [trade.receiveType]: trade.receiveAmount }, `✨ OPORTUNIDADE: ${activePlayer.name} trocou -${giveFmt} por +${recFmt}!`);
+      } else addLog(`❌ Oportunidade perdida: Recursos insuficientes.`, 'loss');
     }
     advanceTurn();
   }, [activePlayer, activeModal.tile, applyResourceChange, advanceTurn, addLog]);
 
+  const resolveQueima = useCallback((goodsSold: number, amountReceived: number) => {
+    if (!activePlayer) return;
+    if (goodsSold > 0) {
+      applyResourceChange(activePlayer.id, { balance: amountReceived, goods: -goodsSold }, `🔥 LIQUIDAÇÃO: ${activePlayer.name} vendeu -${goodsSold} Mercadorias e faturou +R$ ${amountReceived.toLocaleString('pt-BR')}!`);
+    } else {
+      addLog(`🤷‍♂️ ${activePlayer.name} não liquidou mercadorias.`, 'info');
+    }
+    advanceTurn();
+  }, [activePlayer, applyResourceChange, advanceTurn, addLog]);
+
+  const resolveChallenge = useCallback((approved: boolean) => {
+    if (!activePlayer) return;
+    if (approved) applyResourceChange(activePlayer.id, { balance: 20000, points: 5 }, `🏆 APROVADO: ${activePlayer.name} superou a Sabatina! Ganhou +R$ 20.000 e +5 Pontos!`);
+    else applyResourceChange(activePlayer.id, { balance: -25000, points: -2 }, `❌ RECUSADO: ${activePlayer.name} falhou na Sabatina e sofreu -R$ 25.000 e -2 Pontos!`);
+    advanceTurn();
+  }, [activePlayer, applyResourceChange, advanceTurn]);
+
+  const resolveCrisis = useCallback((cancelWithPoints: boolean) => {
+    if (!activePlayer || !activeModal.tile?.effects) return;
+    if (cancelWithPoints) {
+      if (activePlayer.points >= 5) {
+        applyResourceChange(activePlayer.id, { points: -5 }, `🛡️ DEFESA: ${activePlayer.name} gastou -5 Pontos e anulou completamente a Crise!`);
+      } else {
+        let change: any = {}; 
+        let descParts = activeModal.tile.effects.map((e: any) => {
+          change[e.type] = e.amount;
+          return `-${e.type === 'balance' ? `R$ ${Math.abs(e.amount).toLocaleString('pt-BR')}` : `${Math.abs(e.amount)} ${RES_LABELS[e.type]}`}`;
+        });
+        applyResourceChange(activePlayer.id, change, `💥 IMPACTO: ${activePlayer.name} sofreu ${descParts.join(' e ')}!`);
+      }
+    } else {
+      let change: any = {}; 
+      let descParts = activeModal.tile.effects.map((e: any) => {
+        change[e.type] = e.amount;
+        return `-${e.type === 'balance' ? `R$ ${Math.abs(e.amount).toLocaleString('pt-BR')}` : `${Math.abs(e.amount)} ${RES_LABELS[e.type]}`}`;
+      });
+      applyResourceChange(activePlayer.id, change, `💥 IMPACTO: ${activePlayer.name} sofreu ${descParts.join(' e ')}!`);
+    }
+    advanceTurn();
+  }, [activePlayer, activeModal.tile, applyResourceChange, advanceTurn]);
+
+  const resolveInvestment = useCallback((invest: boolean) => {
+    if (!activePlayer) return;
+    if (invest) {
+      const reqLevel = activeModal.tile?.requiredLevel || 1;
+      if ((activePlayer.level + (activePlayer.alliance ? 1 : 0)) >= reqLevel) {
+        applyResourceChange(activePlayer.id, { balance: -50000, goods: 4, points: 5, hasActiveInvestment: true }, `📈 APORTE FEITO: ${activePlayer.name} investiu -R$ 50.000 em troca de +4 Mercadorias e +5 Pontos!`);
+      }
+    }
+    advanceTurn();
+  }, [activePlayer, activeModal.tile, applyResourceChange, advanceTurn]);
+
   const resolveFinalBoardroom = useCallback((approved: boolean) => {
     if (!activePlayer) return;
-
     if (approved) {
       setPlayers(prev => prev.map(p => p.id === activePlayer.id ? { ...p, hasWon: true } : p));
-      setWinner(activePlayer);
-      setPhase('GAME_OVER');
-      addLog(`👑 VITÓRIA HISTÓRICA! O Conselho de Administração aclamou ${activePlayer.name} como o(a) Vencedor(a)!`, 'victory');
-      confetti({ particleCount: 300, spread: 120 });
+      addLog(`👏 CONTRATADO! ${activePlayer.name} garantiu a vaga no Conselho!`, 'gain'); confetti({ particleCount: 100, spread: 70 });
     } else {
-      const boardLength = tiles.length;
-      const newPos = (activePlayer.position - 3 + boardLength) % boardLength;
-      setPlayers(prev => prev.map(p => p.id === activePlayer.id ? { ...p, position: newPos } : p));
-      addLog(`📉 REPROVADO NA SABATINA: O Conselho recusou o plano de ${activePlayer.name}. O executivo recuou 3 casas!`, 'crisis');
-      advanceTurn();
+      setPlayers(prev => prev.map(p => p.id === activePlayer.id ? { ...p, position: (activePlayer.position - 3 + tiles.length) % tiles.length, lapsCompleted: Math.max(0, p.lapsCompleted - 1) } : p));
+      addLog(`📉 REPROVADO! ${activePlayer.name} recuou 3 casas na etapa final.`, 'crisis');
     }
+    advanceTurn();
   }, [activePlayer, tiles.length, addLog, advanceTurn]);
 
-  const createAlliance = useCallback((playerAId: string, playerBId: string, durationRounds: number) => {
-    const playerA = players.find(p => p.id === playerAId);
-    const playerB = players.find(p => p.id === playerBId);
-    if (!playerA || !playerB || playerAId === playerBId) return;
+  const resolveAllianceModal = useCallback((partnerId: string | null, duration: number = 3) => {
+    if (partnerId && activePlayer) {
+      const partner = players.find(p => p.id === partnerId);
+      setPlayers(prev => prev.map(p => {
+        if (p.id === activePlayer.id) return { ...p, alliance: { partnerId, roundsLeft: duration } };
+        if (p.id === partnerId) return { ...p, alliance: { partnerId: activePlayer.id, roundsLeft: duration } };
+        return p;
+      }));
+      addLog(`🤝 CONTRATO ASSINADO: ${activePlayer.name} e ${partner?.name || 'outro executivo'} dividem lucros e dívidas pelas próximas ${duration} rodadas!`, 'alliance');
+    }
+    advanceTurn();
+  }, [activePlayer, players, addLog, advanceTurn]);
 
-    setPlayers(prev => prev.map(p => {
-      if (p.id === playerAId) return { ...p, alliance: { partnerId: playerBId, roundsLeft: durationRounds } };
-      if (p.id === playerBId) return { ...p, alliance: { partnerId: playerAId, roundsLeft: durationRounds } };
-      return p;
-    }));
-    addLog(`🤝 FUSÃO: ${playerA.name} e ${playerB.name} formaram aliança por ${durationRounds} rodadas! Recursos rateados.`, 'alliance');
-  }, [players, addLog]);
-
-  const breakAlliance = useCallback((playerId: string) => {
-    const target = players.find(p => p.id === playerId);
-    if (!target || !target.alliance) return;
-    const partnerId = target.alliance.partnerId;
-
-    setPlayers(prev => prev.map(p => {
-      if (p.id === playerId || p.id === partnerId) return { ...p, alliance: null };
-      return p;
-    }));
-    addLog(`💔 DISSOLUÇÃO: A aliança de ${target.name} foi encerrada imediatamente.`, 'info');
-  }, [players, addLog]);
+  const resolveNegotiation = useCallback((trade: any | null) => {
+    if (!activePlayer) return;
+    if (trade && trade.partnerId) {
+      const partner = players.find(p => p.id === trade.partnerId);
+      if (partner) {
+        const giveFmt = trade.giveType === 'balance' ? `R$ ${trade.giveAmount.toLocaleString('pt-BR')}` : `${trade.giveAmount} ${RES_LABELS[trade.giveType]}`;
+        const recFmt = trade.receiveType === 'balance' ? `R$ ${trade.receiveAmount.toLocaleString('pt-BR')}` : `${trade.receiveAmount} ${RES_LABELS[trade.receiveType]}`;
+        
+        applyResourceChange(activePlayer.id, { [trade.giveType]: -trade.giveAmount }, ''); 
+        applyResourceChange(partner.id, { [trade.giveType]: trade.giveAmount }, '');
+        applyResourceChange(partner.id, { [trade.receiveType]: -trade.receiveAmount }, '');
+        applyResourceChange(activePlayer.id, { [trade.receiveType]: trade.receiveAmount }, `⚖️ ACORDO COMERCIAL: ${activePlayer.name} entregou -${giveFmt} e recebeu +${recFmt} de ${partner.name}!`);
+      }
+    }
+    advanceTurn();
+  }, [activePlayer, players, applyResourceChange, advanceTurn]);
 
   const openTileInspectModal = useCallback((tileIndex: number) => {
     const tile = tiles[tileIndex];
-    if (!tile) return;
-    const tilePlayers = players.filter(p => p.position === tileIndex && !p.isEliminated);
-    setActiveModal({ type: 'INSPECT_TILE', tile, tilePlayers });
+    if (tile) setActiveModal({ type: 'INSPECT_TILE', tile, tilePlayers: players.filter(p => p.position === tileIndex && !p.isEliminated) });
   }, [tiles, players]);
 
-  const closeModal = useCallback(() => {
-    if (activeModal.type === 'TILE_INFO') advanceTurn();
-    else setActiveModal({ type: null });
-  }, [activeModal.type, advanceTurn]);
+  const closeModal = useCallback(() => { if (activeModal.type === 'TILE_INFO') advanceTurn(); else setActiveModal({ type: null }); }, [activeModal.type, advanceTurn]);
+  const restartGame = useCallback(() => { setPhase('SETUP'); setPlayers([]); setActiveModal({ type: null }); setWinner(null); }, []);
 
-  const restartGame = useCallback(() => {
-    setPhase('SETUP');
-    setPlayers([]);
+  const requestShuffleBoard = useCallback(() => setActiveModal({ type: 'CONFIRM_SHUFFLE' }), []);
+  const requestQuitGame = useCallback(() => setActiveModal({ type: 'CONFIRM_QUIT' }), []);
+  
+  const confirmShuffleBoard = useCallback(() => {
+    setTiles(prev => shuffleBoardRules([...prev]));
+    addLog(`🔄 O Tabuleiro corporativo foi re-embaralhado!`, 'info');
     setActiveModal({ type: null });
-    setWinner(null);
-  }, []);
+  }, [addLog]);
+
+  const confirmQuitGame = useCallback(() => {
+    restartGame();
+  }, [restartGame]);
 
   return (
     <GameContext.Provider value={{
-      players, ranking, activePlayer, activePlayerIndex, currentRound, tiles, config,
-      phase, logs, activeModal, winner, movingPlayerId,
-      setupGame, rollDiceAndMove, closeModal, openTileInspectModal,
-      resolveChallenge, resolveCrisis, resolveInvestment, resolveFinalBoardroom,
-      createAlliance, breakAlliance, restartGame, endGameByLimit
+      players, ranking, activePlayer, activePlayerIndex, currentRound, tiles, config, phase, logs, activeModal, winner, movingPlayerId, selectedDice,
+      notification, 
+      setupGame, rollDiceAndMove, closeModal, openTileInspectModal, resolveChallenge, resolveCrisis, resolveInvestment, resolveFinalBoardroom, resolveNegotiation, resolveAllianceModal, resolveOpportunity, resolveQueima, restartGame,
+      requestShuffleBoard, requestQuitGame, confirmShuffleBoard, confirmQuitGame
     }}>
       {children}
     </GameContext.Provider>
   );
 };
 
-export const useGame = () => {
-  const context = useContext(GameContext);
-  if (!context) throw new Error('useGame must be used within a GameProvider');
-  return context;
-};
+export const useGame = () => { const ctx = useContext(GameContext); if (!ctx) throw new Error('Error'); return ctx; };
