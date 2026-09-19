@@ -1187,9 +1187,7 @@ h1, h2, h3, h4, h5, h6 {
   filter: grayscale(0.8);
 }
 
-/* --- ADICIONE ISSO NO FINAL DO INDEX.CSS --- */
-
-/* Força a área que segura o tabuleiro a usar 100% do espaço da tela */
+/* --- FORÇA A ÁREA DO TABULEIRO --- */
 .board-container {
   width: 100%;
   height: 100%;
@@ -1201,19 +1199,17 @@ h1, h2, h3, h4, h5, h6 {
   flex: 1;
 }
 
-/* Força o grid das casas a se esticar (o 1fr faz a mágica aqui) */
 .board-grid-stretched {
   width: 100%;
   height: 100%;
   display: grid;
-  gap: 4px; /* Espaço entre as casas */
+  gap: 4px;
 }
 
-/* Força cada casa individual a esticar e ocupar todo o espaço */
 .casa-stretched {
   width: 100%;
   height: 100%;
-  min-height: 50px; /* Garante que não fiquem espremidas demais */
+  min-height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1231,13 +1227,48 @@ h1, h2, h3, h4, h5, h6 {
 .board-grid-wrapper {
   width: 100% !important;
   height: 100% !important;
-  max-width: none !important; /* Destrói qualquer limite de largura antigo */
-  max-height: none !important; /* Destrói qualquer limite de altura antigo */
-  aspect-ratio: auto !important; /* Impede o navegador de forçar um quadrado perfeito */
+  max-width: none !important;
+  max-height: none !important;
+  aspect-ratio: auto !important;
   flex: 1 !important;
 }
 
 .board-tile {
   width: 100% !important;
   height: 100% !important;
+}
+
+/* =========================================
+   NOVO: BOTÃO DE EXIBIR/OCULTAR PAINEL MAIOR
+   ========================================= */
+.toggle-sidebar-btn, 
+button[title="Exibir Painel"], 
+button[title="Ocultar Painel"] {
+  padding: 16px 24px !important;
+  font-size: 1.15rem !important;
+  font-weight: 800 !important;
+  background: linear-gradient(135deg, #0284c7, #38bdf8) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.4), 0 0 15px rgba(56, 189, 248, 0.4) !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.toggle-sidebar-btn:hover, 
+button[title="Exibir Painel"]:hover, 
+button[title="Ocultar Painel"]:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(56, 189, 248, 0.6) !important;
+}
+
+.toggle-sidebar-btn svg, 
+button[title="Exibir Painel"] svg, 
+button[title="Ocultar Painel"] svg {
+  width: 24px !important;
+  height: 24px !important;
 }

@@ -22,13 +22,18 @@ export const NarratorTurnConsole: React.FC<NarratorTurnConsoleProps> = ({ inCent
   };
 
   const handleQuickDice = (val: number) => {
-    // ATUALIZADO: Agora apenas atualiza o visor e NÃO anda automaticamente!
     setDiceInput(val);
+  };
+
+  // NOVO: Função para o Dado Virtual
+  const handleVirtualDice = () => {
+    if (isMovingOrBusy) return;
+    const result = Math.floor(Math.random() * 6) + 1;
+    setDiceInput(result);
   };
 
   const isMovingOrBusy = phase !== 'ROLL';
 
-  // Retorna o título da empresa baseado no nível atual
   const getCompanyTitle = (level: number) => {
     switch (level) {
       case 5: return 'Empresa Líder';
@@ -84,13 +89,12 @@ export const NarratorTurnConsole: React.FC<NarratorTurnConsoleProps> = ({ inCent
         </div>
       </div>
 
-      {/* DASHBOARD DE ESTATÍSTICAS DO JOGADOR + TÍTULO DE NÍVEL */}
       {activePlayer && (
         <div style={{
           backgroundColor: `${activePlayer.color}15`,
           border: `1px solid ${activePlayer.color}40`,
           borderRadius: '8px',
-          padding: '0.75rem',
+          padding: '0.85rem',
           marginBottom: '1rem',
         }}>
           <div style={{
@@ -98,43 +102,43 @@ export const NarratorTurnConsole: React.FC<NarratorTurnConsoleProps> = ({ inCent
             gridTemplateColumns: 'repeat(3, 1fr)',
             gap: '0.6rem',
             color: 'var(--text-bright)',
-            marginBottom: '0.6rem'
+            marginBottom: '0.8rem'
           }}>
-            <div title="Saldo Financeiro" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <DollarSign size={14} color={activePlayer.color} />
-              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>
+            <div title="Saldo Financeiro" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <DollarSign size={16} color={activePlayer.color} />
+              <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>
                 {activePlayer.balance >= 1000 ? `${(activePlayer.balance / 1000).toFixed(1)}k` : activePlayer.balance}
               </span>
             </div>
-            <div title="Mercadorias / Estoque" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Package size={14} color={activePlayer.color} />
-              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{activePlayer.goods}</span>
+            <div title="Mercadorias / Estoque" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Package size={16} color={activePlayer.color} />
+              <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>{activePlayer.goods}</span>
             </div>
-            <div title="Clientes" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Users size={14} color={activePlayer.color} />
-              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{activePlayer.clients}</span>
+            <div title="Clientes" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Users size={16} color={activePlayer.color} />
+              <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>{activePlayer.clients}</span>
             </div>
-            <div title="Funcionários" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Briefcase size={14} color={activePlayer.color} />
-              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{activePlayer.employees}</span>
+            <div title="Funcionários" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Briefcase size={16} color={activePlayer.color} />
+              <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>{activePlayer.employees}</span>
             </div>
-            <div title="Pontos Corporativos (XP)" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Award size={14} color={activePlayer.color} />
-              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{activePlayer.points} pts</span>
+            <div title="Pontos Corporativos (XP)" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Award size={16} color={activePlayer.color} />
+              <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>{activePlayer.points} pts</span>
             </div>
-            <div title="Nível Corporativo" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Star size={14} color={activePlayer.color} />
-              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Nv. {activePlayer.level}</span>
+            <div title="Nível Corporativo" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Star size={16} color={activePlayer.color} />
+              <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Nv. {activePlayer.level}</span>
             </div>
           </div>
 
           <div style={{
             textAlign: 'center',
-            fontSize: '0.75rem',
+            fontSize: '0.8rem',
             fontWeight: 800,
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
-            padding: '4px 8px',
+            padding: '6px 8px',
             backgroundColor: `${activePlayer.color}25`,
             borderRadius: '4px',
             color: 'var(--accent-gold)',
@@ -145,7 +149,7 @@ export const NarratorTurnConsole: React.FC<NarratorTurnConsoleProps> = ({ inCent
         </div>
       )}
 
-      {/* Entrada do Dado Físico */}
+      {/* Entrada do Dado e Botão de Avançar */}
       <div className="dice-input-group">
         <input
           type="number"
@@ -167,25 +171,40 @@ export const NarratorTurnConsole: React.FC<NarratorTurnConsoleProps> = ({ inCent
         </button>
       </div>
 
-      {/* Botões Rápidos (1 a 6) */}
-      <div className="quick-dice-buttons">
-        {[1, 2, 3, 4, 5, 6].map(num => (
-          <button
-            key={num}
-            type="button"
-            onClick={() => handleQuickDice(num)}
-            disabled={isMovingOrBusy}
-            className="quick-dice-btn"
-            style={{ 
-              // ATUALIZADO: Agora pinta de azul baseado no input atual, e não no peão andando!
-              backgroundColor: diceInput === num ? '#3b82f6' : '',
-              color: diceInput === num ? '#ffffff' : '',
-              borderColor: diceInput === num ? '#3b82f6' : ''
-            }}
-          >
-            {num}
-          </button>
-        ))}
+      {/* NOVO: Conjunto dos Botões de Dado Virtual e Atahos (1-6) */}
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%', marginTop: '0.5rem' }}>
+        
+        {/* Botão de Dado Virtual */}
+        <button 
+          type="button" 
+          onClick={handleVirtualDice} 
+          disabled={isMovingOrBusy} 
+          className="secondary-btn" 
+          style={{ padding: '0.5rem', flex: '1', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}
+          title="Sorteia um número de 1 a 6 e coloca no visor"
+        >
+          <Dices size={18} color="var(--primary)" /> Sortear
+        </button>
+
+        {/* Botões Rápidos */}
+        <div className="quick-dice-buttons" style={{ flex: '3', marginTop: 0 }}>
+          {[1, 2, 3, 4, 5, 6].map(num => (
+            <button
+              key={num}
+              type="button"
+              onClick={() => handleQuickDice(num)}
+              disabled={isMovingOrBusy}
+              className="quick-dice-btn"
+              style={{ 
+                backgroundColor: diceInput === num ? '#3b82f6' : '',
+                color: diceInput === num ? '#ffffff' : '',
+                borderColor: diceInput === num ? '#3b82f6' : ''
+              }}
+            >
+              {num}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -212,19 +231,19 @@ export const NarratorPanel: React.FC = () => {
 
         <div className="logs-stream">
           {logs.length === 0 ? (
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textAlign: 'center', padding: '1rem 0' }}>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', textAlign: 'center', padding: '1rem 0' }}>
               Nenhuma movimentação registrada.
             </div>
           ) : (
             logs.map(log => (
               <div key={log.id} className={`log-entry ${log.type}`}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 700, fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     Rodada {log.round}
                   </span>
                   <span className="log-time">{log.timestamp}</span>
                 </div>
-                <div>{log.message}</div>
+                <div style={{ fontSize: '0.85rem' }}>{log.message}</div>
               </div>
             ))
           )}
