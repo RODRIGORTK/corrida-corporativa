@@ -33,19 +33,32 @@ export function getTileCoordinates(index: number, boardSize: BoardSize): { gridR
 
 export function generateDeck(intermediateCount: number): any[] {
   // Ajuste matemático para dar exatas 2 casas de Desastre em um tabuleiro de 30
-  const pLoss = Math.round(intermediateCount * 0.20);
-  const pAud  = Math.round(intermediateCount * 0.04); // Nova Crise Leve (30%)
-  const pOpp  = Math.round(intermediateCount * 0.10);
-  const pInv  = Math.round(intermediateCount * 0.10);
+  // TAREFA 5: Remove 2 Risco Duplo (Prejuizo), 1 Auditoria Fiscal, 1 Oportunidade, 1 Investimento
+  // e insere 5 casas "Carta Aleatória".
+  let pLoss = Math.max(1, Math.round(intermediateCount * 0.20) - 2);
+  let pAud  = Math.max(0, Math.round(intermediateCount * 0.04) - 1);
+  let pOpp  = Math.max(1, Math.round(intermediateCount * 0.10) - 1);
+  let pInv  = Math.max(1, Math.round(intermediateCount * 0.10) - 1);
+  const pCards = 5; // 5 casas de Carta Aleatória
   const pDis  = Math.round(intermediateCount * 0.07); // ~2 cartas em um tabuleiro de 30
   const pAli  = Math.round(intermediateCount * 0.07);
   const pNeg  = Math.round(intermediateCount * 0.10);
   const pDes  = Math.round(intermediateCount * 0.14);
   const pCre  = Math.round(intermediateCount * 0.07);
   
-  const pQueima = intermediateCount - (pLoss + pAud + pOpp + pInv + pDis + pAli + pNeg + pDes + pCre);
+  const pQueima = intermediateCount - (pLoss + pAud + pOpp + pInv + pDis + pAli + pNeg + pDes + pCre + pCards);
 
   const deck: any[] = [];
+
+  // 5 Casas "Carta Aleatória"
+  for (let i = 0; i < pCards; i++) {
+    deck.push({
+      type: 'CartaAleatoria',
+      title: 'Carta Aleatória',
+      description: 'Você recebe uma carta especial surpresa (20% de chance para cada). Guarde-a no seu inventário para virar o jogo!',
+      actionText: 'Ganhar Carta Especial'
+    });
+  }
 
   const lossVariants = [
     { title: 'Crise: Multa e Roubo', effects: [{ type: 'balance', amount: -30000 }, { type: 'goods', amount: -2 }] },
@@ -60,7 +73,7 @@ export function generateDeck(intermediateCount: number): any[] {
     deck.push({ type: 'Prejuizo', title: v.title, description: 'Golpe duro no mercado. Sofra a penalidade dupla ou anule gastando 5 Pontos!', effects: v.effects, actionText: 'Risco Duplo' });
   }
 
-  // NOVA CARTA: Auditoria / Crise Leve (Vai calcular 30% dinamicamente)
+  // Crise Leve (Auditoria)
   for (let i = 0; i < pAud; i++) {
     deck.push({
       type: 'Auditoria', 
@@ -96,8 +109,8 @@ export function generateDeck(intermediateCount: number): any[] {
   for (let i = 0; i < pDis; i++) deck.push({ type: 'Desastre', title: 'Desastre de Mercado', description: 'Se você tiver um Investimento Ativo, ele será destruído. Caso não tenha, o baque te faz recuar 1 casa.', actionText: 'Risco de Queda' });
   for (let i = 0; i < pAli; i++) deck.push({ type: 'Alianca', title: 'Fusão Estratégica', description: 'Você tem 30 segundos para propor uma Aliança com outro jogador ativo.', actionText: 'Propor Aliança (30s)' });
   for (let i = 0; i < pNeg; i++) deck.push({ type: 'Negociação', title: 'Mesa de Licitação', description: 'Você é o Principal! 1 minuto para fechar uma troca de recursos com outro jogador.', actionText: 'Licitação (1 min)' });
-  for (let i = 0; i < pDes; i++) deck.push({ type: 'Desafio', title: 'Pergunta do Narrador', description: 'O Narrador decidirá uma pergunta corporativa surpresa. Responda em 30 segundos!', actionText: 'Desafio Surpresa' });
-  for (let i = 0; i < pQueima; i++) deck.push({ type: 'Queima', title: 'Liquidação de Estoque', description: 'Venda mercadorias e gere caixa! O lucro é: Valor Base do seu Nível × Qtd Vendida.', actionText: 'Liquidar Mercadorias' });
+  for (let i = 0; i < pDes; i++) deck.push({ type: 'Desafio', title: 'Desafio de Comunicação', description: 'Faça o desafio do narrador ou responda a pergunta.', actionText: 'Desafio de Comunicação' });
+  for (let i = 0; i < Math.max(0, pQueima); i++) deck.push({ type: 'Queima', title: 'Liquidação de Estoque', description: 'Venda mercadorias e gere caixa! O lucro é: Valor Base do seu Nível × Qtd Vendida.', actionText: 'Liquidar Mercadorias' });
 
   return deck.sort(() => Math.random() - 0.5);
 }

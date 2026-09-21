@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../context/GameContext';
 import { getGridDimensions } from '../../utils/boardGenerator';
-import { Award, Crown, TrendingUp, AlertTriangle, Briefcase, Users, DollarSign, Handshake, Gavel, Zap, ShieldAlert, Flame } from 'lucide-react';
+import { Award, Crown, TrendingUp, AlertTriangle, Briefcase, Users, DollarSign, Handshake, Gavel, Zap, ShieldAlert, Flame, Sparkles } from 'lucide-react';
 import type { Tile } from '../../types/game';
 import { NarratorTurnConsole } from '../Narrator/NarratorPanel';
 
@@ -38,6 +38,7 @@ export const Board: React.FC<BoardProps> = ({ isSidebarHidden = false }) => {
   const renderTileIcon = (tile: Tile) => {
     if (tile.type === 'Inicio') return <Crown size={12} color="#fbbf24" />;
     if (tile.type === 'DiretoriaFinal') return <Award size={14} color="#fbbf24" />;
+    if (tile.type === 'CartaAleatoria') return <Sparkles size={12} color="#a855f7" />;
     if (tile.type === 'Prejuizo') return <AlertTriangle size={11} color="#f43f5e" />;
     if (tile.type === 'Desastre') return <ShieldAlert size={11} color="#be123c" />;
     if (tile.type === 'Crescimento') return <TrendingUp size={11} color="#10b981" />;
@@ -54,6 +55,7 @@ export const Board: React.FC<BoardProps> = ({ isSidebarHidden = false }) => {
     switch (type) {
       case 'Inicio': return '#3b82f6';
       case 'DiretoriaFinal': return '#f59e0b';
+      case 'CartaAleatoria': return '#9333ea';
       case 'Prejuizo': return '#e11d48';
       case 'Desastre': return '#9f1239';
       case 'Crescimento': return '#059669';

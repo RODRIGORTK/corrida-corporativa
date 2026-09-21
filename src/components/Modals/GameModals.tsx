@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useGame } from '../../context/GameContext';
 import { FINAL_BOARDROOM_CHALLENGE } from '../../data/challenges';
 import { 
-  Trophy, AlertTriangle, TrendingUp, DollarSign, Users, Check, X, Clock, Crown, ShieldCheck, Briefcase, RotateCcw, Handshake, Gavel, Package, Award, Flame, RefreshCw, LogOut, Play, Pause
+  Trophy, AlertTriangle, TrendingUp, DollarSign, Users, Check, X, Clock, Crown, ShieldCheck, Briefcase, RotateCcw, Handshake, Gavel, Package, Award, Flame, RefreshCw, LogOut, Play, Pause, Dices
 } from 'lucide-react';
 import type { Player } from '../../types/game';
 
@@ -47,8 +47,7 @@ export const GameModals: React.FC = () => {
 
   const { 
     activeModal, closeModal, resolveChallenge, resolveCrisis, resolveInvestment, resolveInvestmentReturn,
-    resolveFinalBoardroom, resolveNegotiation, resolveAllianceModal, resolveOpportunity, resolveQueima,
-    activePlayer, players, winner, restartGame, confirmShuffleBoard, confirmQuitGame
+    resolveFinalBoardroom, resolveNegotiation, resolveAllianceModal, resolveOpportunity, resolveQueima,    activePlayer, players, winner, restartGame, confirmShuffleBoard, confirmQuitGame, rollDiceAndMove
   } = gameContext;
 
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
@@ -97,8 +96,7 @@ export const GameModals: React.FC = () => {
     if (isTimerRunning && timerSeconds > 0) {
       interval = setInterval(() => setTimerSeconds(prev => prev - 1), 1000);
     } else if (timerSeconds === 0) {
-      setIsTimerRunning(false);
-    }
+      setIsTimerRunning(false);    }
     return () => clearInterval(interval);
   }, [isTimerRunning, timerSeconds]);
 
@@ -147,8 +145,7 @@ export const GameModals: React.FC = () => {
     </div>
   );
 
-  const renderSelectablePlayerCard = (player: Player, isSelected: boolean, onSelect: () => void, rankPosition: number) => (
-    <div key={player.id} onClick={onSelect} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: isSelected ? 'rgba(56, 189, 248, 0.15)' : 'rgba(15, 23, 42, 0.7)', border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border-subtle)'}`, padding: '0.85rem', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s ease' }}>
+  const renderSelectablePlayerCard = (player: Player, isSelected: boolean, onSelect: () => void, rankPosition: number) => (    <div key={player.id} onClick={onSelect} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: isSelected ? 'rgba(56, 189, 248, 0.15)' : 'rgba(15, 23, 42, 0.7)', border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border-subtle)'}`, padding: '0.85rem', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s ease' }}>
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.6rem' }}>
           <span style={{ fontSize: '1.2rem', fontWeight: 900, color: rankPosition === 1 ? '#fbbf24' : rankPosition === 2 ? '#94a3b8' : rankPosition === 3 ? '#b45309' : 'var(--text-dim)', minWidth: '25px' }}>
@@ -190,15 +187,51 @@ export const GameModals: React.FC = () => {
       )}
       
       {activeModal.type === 'CONFIRM_QUIT' && (
-        <div className="modal-overlay"><div className="modal-dialog" style={{ maxWidth: '420px', border: '1px solid rgba(244, 63, 94, 0.5)' }}><div className="modal-header"><div className="modal-title-group"><div className="modal-icon-bubble" style={{ color: 'var(--accent-rose)', borderColor: 'var(--accent-rose)', background: 'rgba(244, 63, 94, 0.1)' }}><LogOut size={22} /></div><div><h3 className="modal-title">Abandonar Partida?</h3></div></div></div><div className="modal-body" style={{ textAlign: 'center', color: 'var(--text-bright)', fontSize: '1rem' }}>Você está prestes a encerrar a partida.<br/><br/><span style={{ color: 'var(--accent-rose)', fontWeight: 'bold' }}>Todo o progresso será perdido.</span></div><div className="modal-footer"><button type="button" onClick={closeModal} className="btn-neutral">Continuar Jogando</button><button type="button" onClick={confirmQuitGame} className="btn-reject"><LogOut size={18} /> Sim, Encerrar</button></div></div></div>
+        <div className="modal-overlay"><div className="modal-dialog" style={{ maxWidth: '420px', border: '1px solid rgba(244, 63, 94, 0.5)' }}><div className="modal-header"><div className="modal-title-group"><div className="modal-icon-bubble" style={{ color: 'var(--accent-rose)', borderColor: 'var(--accent-rose)', background: 'rgba(244, 63, 94, 0.1)' }}><LogOut size={22} /></div><div><h3 className="modal-title">Abandonar Partida?</h3></div></div></div><div className="modal-body" style={{ textAlign: 'center', color: 'var(--text-bright)', fontSize: '1rem' }}>Você está prestes a encerrar a partida.<br/><br/><span style={{ color: 'var(--accent-rose)', fontWeight: 'bold' }}>Todo o progresso será perdido e a sala fechada.</span></div><div className="modal-footer"><button type="button" onClick={closeModal} className="btn-neutral">Continuar Jogando</button><button type="button" onClick={confirmQuitGame} className="btn-reject"><LogOut size={18} /> Sim, Encerrar Tudo</button></div></div></div>
+      )}
+
+      {/* 🔥 MODAL PARA AVISAR QUE O CELULAR ROLOU O DADO 🔥 */}
+      {activeModal.type === 'DICE_RESULT' && (
+        <div className="modal-overlay">
+          <div className="modal-dialog" style={{ textAlign: 'center', maxWidth: '400px', border: '1px solid var(--accent-gold)' }}>
+            <div className="modal-header" style={{ justifyContent: 'center' }}>
+              <div className="modal-title-group">
+                <div className="modal-icon-bubble" style={{ color: 'var(--accent-gold)', borderColor: 'var(--accent-gold)' }}>
+                  <Dices size={24} />
+                </div>
+                <div><h3 className="modal-title">Dado Sorteado!</h3></div>
+              </div>
+            </div>
+            <div className="modal-body" style={{ margin: '1rem 0' }}>
+              <div style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>
+                <strong>{activeModal.playerName}</strong> jogou o dado:
+              </div>
+              <div style={{ fontSize: '5rem', fontWeight: 900, color: 'var(--accent-gold)', textShadow: '0 0 20px rgba(251, 191, 36, 0.3)' }}>
+                {activeModal.diceValue}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button 
+                type="button" 
+                className="btn-approve" 
+                style={{ width: '100%', fontSize: '1.1rem', padding: '1.2rem' }}
+                onClick={() => {
+                  closeModal();
+                  if (activeModal.diceValue) rollDiceAndMove(activeModal.diceValue);
+                }}
+              >
+                Avançar {activeModal.diceValue} casas
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       
       {(winner || activeModal.type === 'GAME_OVER') && (
         <div className="modal-overlay">
           <div className="modal-dialog victory-modal" style={{ maxWidth: '640px' }}>
             <div className="modal-header" style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(15, 23, 42, 0.8))' }}><div className="modal-title-group"><div className="modal-icon-bubble" style={{ background: 'rgba(245, 158, 11, 0.2)', borderColor: '#f59e0b', color: '#f59e0b' }}><Crown size={24} /></div><div><h3 className="modal-title" style={{ color: '#fbbf24' }}>CORRIDA ENCERRADA!</h3></div></div></div>
-            <div className="modal-body" style={{ textAlign: 'center' }}>
-              <Trophy size={64} color="#fbbf24" style={{ margin: '0 auto 1rem auto' }} />
+            <div className="modal-body" style={{ textAlign: 'center' }}>              <Trophy size={64} color="#fbbf24" style={{ margin: '0 auto 1rem auto' }} />
               <h2 style={{ fontSize: '2.5rem', fontWeight: 900, color: '#ffffff' }}>{winner?.name || sortedPlayers[0]?.name}</h2>
               <div style={{ marginTop: '1.5rem', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '280px', overflowY: 'auto' }}>
                 {sortedPlayers.map((p, idx) => (
@@ -209,7 +242,7 @@ export const GameModals: React.FC = () => {
                 ))}
               </div>
             </div>
-            <div className="modal-footer" style={{ justifyContent: 'center' }}><button type="button" onClick={restartGame} className="btn-approve" style={{ padding: '0.85rem 2rem' }}><RotateCcw size={18} /> Nova Temporada</button></div>
+            <div className="modal-footer" style={{ justifyContent: 'center' }}><button type="button" onClick={confirmQuitGame} className="btn-approve" style={{ padding: '0.85rem 2rem' }}><RotateCcw size={18} /> Nova Temporada</button></div>
           </div>
         </div>
       )}
@@ -247,8 +280,7 @@ export const GameModals: React.FC = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, overflowY: 'auto', paddingRight: '0.5rem', minHeight: '200px' }}>
                   {eligiblePartners.length === 0 ? 
                     <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: '1.1rem', padding: '3rem' }}>Nenhum executivo livre para negociar.</div> : 
-                    eligiblePartners.map(p => {
-                      const rankPos = sortedPlayers.findIndex(r => r.id === p.id) + 1;
+                    eligiblePartners.map(p => {                      const rankPos = sortedPlayers.findIndex(r => r.id === p.id) + 1;
                       return renderSelectablePlayerCard(p, tradePartnerId === p.id, () => setTradePartnerId(p.id), rankPos);
                     })
                   }
@@ -297,8 +329,7 @@ export const GameModals: React.FC = () => {
                 </div>
                 <div className="modal-footer" style={{ padding: '1.5rem', background: 'transparent', borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <button type="button" disabled={!alliancePartnerId} onClick={() => resolveAllianceModal(alliancePartnerId, allianceDuration)} className="btn-approve" style={{ width: '100%', padding: '1.2rem', fontSize: '1.1rem', opacity: alliancePartnerId ? 1 : 0.4 }}><Handshake size={20} /> Firmar Aliança</button>
-                  <button type="button" onClick={() => resolveAllianceModal(null)} className="btn-reject" style={{ width: '100%', padding: '1rem' }}>Passar / Jogar Sozinho</button>
-                </div>
+                  <button type="button" onClick={() => resolveAllianceModal(null)} className="btn-reject" style={{ width: '100%', padding: '1rem' }}>Passar / Jogar Sozinho</button>                </div>
               </div>
               <div style={{ flex: 1, padding: '2rem', background: 'rgba(30, 41, 59, 0.4)', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
                 <h3 style={{ fontSize: '1.2rem', color: 'var(--text-bright)', marginBottom: '1.5rem', fontWeight: 800 }}>Escolha a Empresa Alvo (Ordem de Ranking):</h3>
@@ -321,7 +352,6 @@ export const GameModals: React.FC = () => {
         );
       })()}
 
-      {/* 🔥 NOVO LAYOUT DO INVESTIMENTO AQUI 🔥 */}
       {activeModal.type === 'INVESTMENT' && (() => {
         const totalInvested = invBalance + invGoods + invClients + invEmployees + invPoints;
         const canInvest = totalInvested > 0 && activePlayer && invBalance <= (activePlayer.balance || 0) && invGoods <= (activePlayer.goods || 0) && invClients <= (activePlayer.clients || 0) && invEmployees <= (activePlayer.employees || 0) && invPoints <= (activePlayer.points || 0);
@@ -347,8 +377,7 @@ export const GameModals: React.FC = () => {
                 </div>
 
                 <div className="modal-footer" style={{ padding: '1.5rem', background: 'transparent', borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <button type="button" onClick={() => resolveInvestment({ balance: invBalance, goods: invGoods, clients: invClients, employees: invEmployees, points: invPoints })} disabled={!canInvest} className="btn-approve" style={{ width: '100%', padding: '1.2rem', fontSize: '1.1rem', opacity: canInvest ? 1 : 0.4 }}><Check size={20} /> Confirmar Investimento</button>
-                  <button type="button" onClick={() => resolveInvestment(null)} className="btn-reject" style={{ width: '100%', padding: '1rem' }}>Passar (Não Investir)</button>
+                  <button type="button" onClick={() => resolveInvestment({ balance: invBalance, goods: invGoods, clients: invClients, employees: invEmployees, points: invPoints })} disabled={!canInvest} className="btn-approve" style={{ width: '100%', padding: '1.2rem', fontSize: '1.1rem', opacity: canInvest ? 1 : 0.4 }}><Check size={20} /> Confirmar Investimento</button>                  <button type="button" onClick={() => resolveInvestment(null)} className="btn-reject" style={{ width: '100%', padding: '1rem' }}>Passar (Não Investir)</button>
                 </div>
               </div>
 
@@ -397,8 +426,7 @@ export const GameModals: React.FC = () => {
                     </div>
                   )}
                 </div>
-                
-              </div>
+                              </div>
             </div>
           </div>
         );
@@ -411,11 +439,11 @@ export const GameModals: React.FC = () => {
           <div className="modal-overlay">
             <div className="modal-dialog">
               <div className="modal-header"><div className="modal-title-group"><div className="modal-icon-bubble" style={{ color: 'var(--text-bright)' }}><Briefcase size={22} /></div>
-              <div><h3 className="modal-title">Desafio do Narrador</h3><span className="modal-sector-tag">Sabatina para {getPlayerNameSpan(activePlayer)}</span></div></div></div>
+              <div><h3 className="modal-title">Desafio de Comunicação</h3><span className="modal-sector-tag">Sabatina para {getPlayerNameSpan(activePlayer)}</span></div></div></div>
               <div className="modal-body">
                 {activePlayer && renderPrincipalDashboard(activePlayer)}
                 <div className="modal-scenario-box" style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>O Narrador ditará a sua pergunta agora! Responda rápido!</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>Faça o desafio do narrador ou responda a pergunta.</div>
                   <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Dica: Você pode poupar tempo e "pular" o desafio se usar 3 funcionários para trabalhar para você (porém, você não ganha os prêmios).</div>
                 </div>
                 {renderTimer()}
@@ -447,8 +475,7 @@ export const GameModals: React.FC = () => {
               <button type="button" onClick={() => resolveFinalBoardroom(false)} className="btn-reject" style={{ padding: '1rem' }}><X size={18} /> Recusar (Volta 3 Casas)</button>
               <button type="button" onClick={() => resolveFinalBoardroom(true)} className="btn-approve" style={{ padding: '1rem' }}><Check size={18} /> Aprovar (Garante a Vaga!)</button>
             </div>
-          </div>
-        </div>
+          </div>        </div>
       )}
 
       {/* ---------- OUTRAS TELAS (QUEIMA E INVESTIMENTO RETURN) ---------- */}

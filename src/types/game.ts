@@ -8,19 +8,42 @@ export type SectorType =
   | 'Tecnologia' 
   | 'Diretoria';
 
+export type SpecialCardType = 
+  | 'segunda_chance' 
+  | 'bloqueio' 
+  | 'impostor' 
+  | 'dois_dados' 
+  | 'traicoeiro';
+
+export interface SpecialCard {
+  id: string;
+  type: SpecialCardType;
+  title: string;
+  description: string;
+  icon: string;
+  receivedAt?: number;
+}
+
 export type TileType = 
   | 'Oportunidade' 
   | 'Crise' 
   | 'Investimento' 
   | 'Negociação' 
   | 'Desafio' 
+  | 'CartaAleatoria'
+  | 'Prejuizo'
+  | 'Auditoria'
+  | 'Crescimento'
+  | 'Desastre'
+  | 'Alianca'
+  | 'Queima'
   | 'Inicio' 
   | 'DiretoriaFinal';
 
 export interface Tile {
   id: number;
   index: number; // 0-based position
-  sector: SectorType;
+  sector: SectorType | 'Geral';
   type: TileType;
   title: string;
   description: string;
@@ -29,6 +52,8 @@ export interface Tile {
   gridColumn: number;
   badge?: string;
   requiredLevel?: number; // Requisito de nível corporativo
+  effects?: any[];
+  trade?: any;
 }
 
 export interface PlayerBankruptcy {
@@ -44,6 +69,7 @@ export interface PlayerAlliance {
 export interface Player {
   id: string;
   name: string;
+  pin?: string;
   color: string;
   position: number; // 0 até maxTiles - 1
   lapsCompleted: number; // Voltas completas no tabuleiro
@@ -56,9 +82,16 @@ export interface Player {
   points: number;       // Pontos iniciais: 0
   level: number;        // Nível inicial: 0 (Máx: 5)
   
+  // Cartas e estados multiplayer
+  cards?: SpecialCard[];
+  isBlocked?: boolean;
+  hasExtraRoll?: boolean;
+  isConnected?: boolean;
+
   // Estados especiais
   bankruptcy: PlayerBankruptcy;
   alliance: PlayerAlliance | null;
+  investments?: any[];
   
   isEliminated: boolean;
   hasWon: boolean;
